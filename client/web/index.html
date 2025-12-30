@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1a1e24">
   <title>Celio's Network Machine</title>
   <link rel="stylesheet" href="xterm.css">
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <div id="app">
@@ -57,13 +57,14 @@
 
     <!-- Dashboard View (Session Cards) -->
     <div id="dashboard-view" class="view active">
+      <!-- Pull-to-refresh indicator -->
+      <div id="pull-refresh">
+        <svg id="pull-refresh-icon" width="40" height="40" viewBox="0 0 256 256" fill="currentColor">
+          <path id="pull-refresh-path" d="m 128,38.17189 c -3.96774,0 -7.88276,0.26235 -11.71455,0.76112 l 0,107.94597 99.54061,0 c 1.29999,-6.08286 1.98552,-12.39119 1.98552,-18.86242 0,-49.6066 -40.20496,-89.84467 -89.81158,-89.84467 z m -57.282183,20.61629 c -19.888889,16.47529 -32.529397,41.38427 -32.529397,69.22838 0,6.46737 0.689185,12.78339 1.985518,18.86242 l 30.543879,0 0,-88.0908 z M 45.865755,164.45081 c 5.665734,12.76396 14.229794,23.96191 24.852062,32.76104 l 0,-32.76104 -24.852062,0 z m 70.419695,0 0,52.61621 c 3.83198,0.4988 7.7466,0.7611 11.71455,0.7611 36.63278,0 68.12716,-21.93201 82.10115,-53.37731 l -93.8157,0 z"/>
+        </svg>
+      </div>
       <div id="session-cards"></div>
       <div id="no-sessions" class="empty-state">
-        <div class="empty-icon">
-          <svg width="56" height="56" viewBox="0 0 256 256" fill="currentColor" opacity="0.35">
-            <path id="empty-icon-path" d="m 128,38.17189 c -3.96774,0 -7.88276,0.26235 -11.71455,0.76112 l 0,107.94597 99.54061,0 c 1.29999,-6.08286 1.98552,-12.39119 1.98552,-18.86242 0,-49.6066 -40.20496,-89.84467 -89.81158,-89.84467 z m -57.282183,20.61629 c -19.888889,16.47529 -32.529397,41.38427 -32.529397,69.22838 0,6.46737 0.689185,12.78339 1.985518,18.86242 l 30.543879,0 0,-88.0908 z M 45.865755,164.45081 c 5.665734,12.76396 14.229794,23.96191 24.852062,32.76104 l 0,-32.76104 -24.852062,0 z m 70.419695,0 0,52.61621 c 3.83198,0.4988 7.7466,0.7611 11.71455,0.7611 36.63278,0 68.12716,-21.93201 82.10115,-53.37731 l -93.8157,0 z"/>
-          </svg>
-        </div>
         <p id="agent-count">Waiting for connection</p>
         <p class="hint">Start a link with: <code>node launcher.js &lt;name&gt; [dir]</code></p>
       </div>
@@ -117,6 +118,6 @@
   <script src="xterm-addon-fit.min.js"></script>
   <script src="xterm-addon-web-links.min.js"></script>
   <script src="icons.js?v=2"></script>
-  <script src="app.js?v=42"></script>
+  <script src="app.js?v=43"></script>
 </body>
 </html>

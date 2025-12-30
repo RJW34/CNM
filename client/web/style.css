@@ -409,6 +409,47 @@ html, body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 12px;
+  position: relative;
+}
+
+/* Pull-to-refresh indicator */
+#pull-refresh {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 0;
+  overflow: hidden;
+  transition: height 0.2s ease, opacity 0.2s ease;
+  opacity: 0;
+}
+
+#pull-refresh.pulling {
+  height: 60px;
+  opacity: 1;
+}
+
+#pull-refresh.refreshing {
+  height: 60px;
+  opacity: 1;
+}
+
+#pull-refresh-icon {
+  color: var(--emerald-400);
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 8px var(--emerald-glow));
+}
+
+#pull-refresh.pulling #pull-refresh-icon {
+  transform: rotate(0deg);
+}
+
+#pull-refresh.refreshing #pull-refresh-icon {
+  animation: spinRefreshIcon 1s linear infinite;
+}
+
+@keyframes spinRefreshIcon {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 #session-cards {
@@ -674,10 +715,6 @@ html, body {
   min-height: 300px;
 }
 
-.empty-state .empty-icon {
-  margin-bottom: 16px;
-}
-
 .empty-state p {
   color: var(--text-secondary);
   font-size: 16px;
@@ -769,11 +806,6 @@ html, body {
   margin-top: 8px;
 }
 
-#session-cards:not(:empty) ~ #no-sessions .empty-icon svg {
-  width: 40px;
-  height: 40px;
-  opacity: 0.25;
-}
 
 #session-cards:not(:empty) ~ #no-sessions p {
   font-size: 14px;
@@ -1176,15 +1208,6 @@ html, body {
   animation: heartbeat 2s ease-in-out infinite;
 }
 
-/* Subtle floating animation for empty state icon */
-@keyframes floatIcon {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-.empty-state .empty-icon {
-  animation: floatIcon 3s ease-in-out infinite;
-}
 
 /* Badge working pulse - more prominent */
 @keyframes workingPulse {

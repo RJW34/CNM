@@ -964,7 +964,7 @@
     }, { passive: false });
   }
 
-  // Initialize icons - apply random icon to status and empty state
+  // Initialize icons - apply random icon to pull-refresh indicator
   function initIcons() {
     // Check if icons.js loaded successfully
     if (typeof getRandomIcon !== 'function') {
@@ -975,11 +975,84 @@
     const icon = getRandomIcon();
     console.log('[Icons] Selected:', icon.name);
 
-    // Apply to empty state icon only
-    const emptyPath = document.getElementById('empty-icon-path');
-    if (emptyPath && icon) {
-      emptyPath.setAttribute('d', icon.path);
+    // Apply to pull-refresh icon
+    const pullRefreshPath = document.getElementById('pull-refresh-path');
+    if (pullRefreshPath && icon) {
+      pullRefreshPath.setAttribute('d', icon.path);
     }
+  }
+
+  // Pull-to-refresh functionality
+  function setupPullToRefresh() {
+    const dashboard = document.getElementById('dashboard-view');
+    const pullRefresh = document.getElementById('pull-refresh');
+    if (!dashboard || !pullRefresh) return;
+
+    let startY = 0;
+    let pulling = false;
+    const threshold = 80; // pixels to pull before triggering refresh
+
+    dashboard.addEventListener('touchstart', (e) => {
+      // Only enable pull-to-refresh when scrolled to top
+      if (dashboard.scrollTop === 0) {
+        startY = e.touches[0].pageY;
+        pulling = true;
+      }
+    }, { passive: true });
+
+    dashboard.addEventListener('touchmove', (e) => {
+      if (!pulling) return;
+
+      const currentY = e.touches[0].pageY;
+      const pullDistance = currentY - startY;
+
+      if (pullDistance > 0 && dashboard.scrollTop === 0) {
+        // Show pull indicator proportionally
+        const progress = Math.min(pullDistance / threshold, 1);
+        pullRefresh.style.height = `${Math.min(pullDistance * 0.6, 70)}px`;
+        pullRefresh.style.opacity = progress;
+
+        if (pullDistance > threshold) {
+          pullRefresh.classList.add('pulling');
+        } else {
+          pullRefresh.classList.remove('pulling');
+        }
+      }
+    }, { passive: true });
+
+    dashboard.addEventListener('touchend', () => {
+      if (!pulling) return;
+      pulling = false;
+
+      if (pullRefresh.classList.contains('pulling')) {
+        // Trigger refresh
+        pullRefresh.classList.remove('pulling');
+        pullRefresh.classList.add('refreshing');
+
+        // Pick a new random icon for next time
+        if (typeof getRandomIcon === 'function') {
+          const icon = getRandomIcon();
+          const pullRefreshPath = document.getElementById('pull-refresh-path');
+          if (pullRefreshPath && icon) {
+            pullRefreshPath.setAttribute('d', icon.path);
+          }
+        }
+
+        // Request sessions refresh
+        requestSessions();
+
+        // Hide after delay
+        setTimeout(() => {
+          pullRefresh.classList.remove('refreshing');
+          pullRefresh.style.height = '0';
+          pullRefresh.style.opacity = '0';
+        }, 800);
+      } else {
+        // Snap back
+        pullRefresh.style.height = '0';
+        pullRefresh.style.opacity = '0';
+      }
+    }, { passive: true });
   }
 
   // Initialize
@@ -987,6 +1060,7 @@
     initIcons();
     setupMobileInput();
     setupEventListeners();
+    setupPullToRefresh();
 
     // Connect immediately - iOS self-signed cert stability handled by session cookie
     connect();
