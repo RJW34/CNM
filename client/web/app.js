@@ -52,6 +52,7 @@
   // Sessions state: Map of sessionId -> { term, fitAddon, status, lastActivity, preview, connected }
   const sessions = new Map();
   let focusedSessionId = null;
+  let lastFocusedSessionId = null; // Track which session the terminal was last showing (to avoid jitter on re-entry)
   let focusTerm = null;
   let focusFitAddon = null;
 
@@ -285,6 +286,7 @@
 
   // Open focus view for a session
   function openFocusView(sessionId) {
+    const isReturningToSameSession = (sessionId === lastFocusedSessionId && focusTerm);
     focusedSessionId = sessionId;
 
     const session = availableSessions.find(s => s.id === sessionId);
@@ -308,19 +310,26 @@
       term.element.addEventListener('click', () => {
         showKeyboard();
       });
-    } else {
-      // Clear terminal for new session
+    } else if (!isReturningToSameSession) {
+      // Only clear terminal when switching to a DIFFERENT session
       focusTerm.clear();
     }
 
-    // Connect to session
-    connectToSession(sessionId);
+    // Track which session the terminal is showing
+    lastFocusedSessionId = sessionId;
+
+    // Only reconnect if this is a new session or we don't have an active connection
+    if (!isReturningToSameSession) {
+      connectToSession(sessionId);
+      updateFocusStatus('connecting');
+    } else {
+      // Returning to same session - just update status based on current state
+      const sessionState = sessions.get(sessionId);
+      updateFocusStatus(sessionState?.connected ? 'connected' : 'connecting');
+    }
 
     // Switch to focus view
     switchView('focus');
-
-    // Update status
-    updateFocusStatus('connecting');
 
     setTimeout(() => {
       focusFitAddon.fit();

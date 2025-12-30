@@ -147,16 +147,16 @@ html, body {
   font-weight: 900;
   letter-spacing: 3px;
   line-height: 1;
-  color: #3CA870;
+  color: var(--accent-ruby-light);
   text-shadow:
-    /* Sharp 3D extrusion - deep emerald layers */
-    1px 1px 0 #2D8B57,
-    2px 2px 0 #1a5035,
-    3px 3px 0 #0f3020,
-    4px 4px 0 #081810,
+    /* Sharp 3D extrusion - deep ruby layers */
+    1px 1px 0 var(--accent-ruby),
+    2px 2px 0 #8a0a38,
+    3px 3px 0 #5a0625,
+    4px 4px 0 #2a0312,
     /* Ground shadow */
     4px 5px 8px rgba(0, 0, 0, 0.8);
-  filter: drop-shadow(0 0 12px var(--glow-emerald));
+  filter: drop-shadow(0 0 12px var(--glow-ruby));
 }
 
 .title-sub {
@@ -165,14 +165,14 @@ html, body {
   letter-spacing: 4px;
   line-height: 1;
   margin-top: 3px;
-  color: #3CA870;
+  color: var(--accent-sapphire-light);
   text-shadow:
-    /* Subtle emerald depth */
-    1px 1px 0 #2D8B57,
-    2px 2px 0 #1a5035,
+    /* Subtle sapphire depth */
+    1px 1px 0 var(--accent-sapphire),
+    2px 2px 0 #0a3580,
     /* Ground shadow */
     2px 3px 5px rgba(0, 0, 0, 0.6);
-  filter: drop-shadow(0 0 6px var(--glow-emerald));
+  filter: drop-shadow(0 0 6px var(--glow-sapphire));
 }
 
 /* Connection status - right side with gem indicators */
@@ -186,9 +186,9 @@ html, body {
 .status-text {
   width: 90px;
   text-align: center;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--accent-emerald-dim);
   text-shadow: 0 0 2px rgba(0, 255, 106, 0.2);
