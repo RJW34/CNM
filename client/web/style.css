@@ -667,33 +667,57 @@ html, body {
   font-size: 16px;
 }
 
-/* Waiting for connection - Ruby & Sapphire symmetrical gradient */
+/* Waiting for connection - Light grey fill with Ruby & Sapphire gradient stroke */
 #agent-count {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 18px;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  background: linear-gradient(
-    90deg,
-    var(--accent-ruby) 0%,
-    var(--accent-ruby-light) 20%,
-    var(--accent-sapphire) 50%,
-    var(--accent-ruby-light) 80%,
-    var(--accent-ruby) 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 0 6px var(--glow-ruby)) drop-shadow(0 0 6px var(--glow-sapphire));
+  color: #3a4050;
+  text-shadow:
+    /* Ruby stroke - left side */
+    -1px -1px 0 var(--accent-ruby),
+    -1px 0 0 var(--accent-ruby),
+    -1px 1px 0 var(--accent-ruby),
+    /* Sapphire stroke - right side */
+    1px -1px 0 var(--accent-sapphire),
+    1px 0 0 var(--accent-sapphire),
+    1px 1px 0 var(--accent-sapphire),
+    /* Top/bottom blend */
+    0 -1px 0 var(--accent-ruby-light),
+    0 1px 0 var(--accent-ruby-light),
+    /* Outer glow */
+    0 0 8px var(--glow-ruby),
+    0 0 8px var(--glow-sapphire);
   animation: gemShimmer 4s ease-in-out infinite;
 }
 
 @keyframes gemShimmer {
   0%, 100% {
-    filter: drop-shadow(0 0 8px var(--glow-ruby)) drop-shadow(0 0 4px var(--glow-sapphire));
+    text-shadow:
+      -1px -1px 0 var(--accent-ruby),
+      -1px 0 0 var(--accent-ruby),
+      -1px 1px 0 var(--accent-ruby),
+      1px -1px 0 var(--accent-sapphire),
+      1px 0 0 var(--accent-sapphire),
+      1px 1px 0 var(--accent-sapphire),
+      0 -1px 0 var(--accent-ruby-light),
+      0 1px 0 var(--accent-ruby-light),
+      0 0 12px var(--glow-ruby),
+      0 0 6px var(--glow-sapphire);
   }
   50% {
-    filter: drop-shadow(0 0 4px var(--glow-ruby)) drop-shadow(0 0 8px var(--glow-sapphire));
+    text-shadow:
+      -1px -1px 0 var(--accent-ruby),
+      -1px 0 0 var(--accent-ruby),
+      -1px 1px 0 var(--accent-ruby),
+      1px -1px 0 var(--accent-sapphire),
+      1px 0 0 var(--accent-sapphire),
+      1px 1px 0 var(--accent-sapphire),
+      0 -1px 0 var(--accent-ruby-light),
+      0 1px 0 var(--accent-ruby-light),
+      0 0 6px var(--glow-ruby),
+      0 0 12px var(--glow-sapphire);
   }
 }
 
