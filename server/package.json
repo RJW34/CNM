@@ -9,6 +9,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "node-pty": "^1.0.0",
     "ws": "^8.18.0"
   }

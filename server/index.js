@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createServer } from 'https';
 import { readFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
 import { WebSocketServer } from 'ws';

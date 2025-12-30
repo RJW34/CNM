@@ -57,7 +57,22 @@ Add these routes to `cloudflared-config.yml` **BEFORE** the catch-all rule (`- s
       noTLSVerify: true
 ```
 
-### Step 5: Update START-WEBSITE.bat
+### Step 5: Set Auth Token (REQUIRED)
+
+**CRITICAL**: Generate a secure auth token. Do NOT use the default token.
+
+```bash
+# Generate a secure token
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Create `cnm/server/.env` with the generated token:
+
+```env
+RELAY_AUTH_TOKEN=<paste-generated-token-here>
+```
+
+### Step 6: Update START-WEBSITE.bat
 
 Add CNM startup **AFTER** the Zarchon startup section and **BEFORE** the Cloudflare Tunnel section:
 
@@ -72,7 +87,7 @@ Also update the "All services started" echo section to include:
 echo  CNM:         https://walterfam.xyz/cnm
 ```
 
-### Step 6: Update SETUP-WEBSITE.bat
+### Step 7: Update SETUP-WEBSITE.bat
 
 Add CNM setup **AFTER** the Zarchon server build section (Step 7 in existing script):
 
@@ -114,7 +129,7 @@ echo.
 
 **Note**: Increment subsequent step numbers if needed.
 
-### Step 7: Create start-cnm.bat
+### Step 8: Create start-cnm.bat
 
 Create `cnm/start-cnm.bat`:
 
@@ -137,7 +152,7 @@ echo.
 node index.js
 ```
 
-### Step 8: Update README.md
+### Step 9: Update README.md
 
 Add CNM to the services list in README.md:
 
@@ -166,10 +181,7 @@ After starting all services:
 
 ## Security Note
 
-The default auth token is `change-this-secret-token`. For production:
-1. Edit `cnm/server/config.js`
-2. Change `AUTH_TOKEN` to a secure random string
-3. Or set environment variable `RELAY_AUTH_TOKEN`
+The auth token MUST be set via `.env` file (Step 5). The `.env` file is gitignored and will NOT be committed.
 
 ## Port Reference
 
