@@ -7,46 +7,79 @@
 :root {
   /* Base colors - Medium slate grey theme for contrast */
   --bg-primary: #1a1e24;
-  --bg-ocean: #1e2228;
   --bg-secondary: rgba(26, 30, 38, 0.95);
   --bg-tertiary: rgba(32, 36, 44, 0.92);
   --bg-card: rgba(22, 26, 32, 0.88);
   --border-color: rgba(90, 100, 120, 0.4);
   --border-light: rgba(130, 140, 160, 0.18);
 
-  /* Text colors - warm tropical whites */
+  /* Text colors */
   --text-primary: #f0f8ff;
-  --text-secondary: #a0d0e8;
-  --text-muted: #5090a8;
-  --text-dim: #305868;
+  --text-secondary: #a0b8c8;
+  --text-muted: #607080;
+  --text-dim: #404850;
 
-  /* Emerald - GBA Cartridge green (darker, richer) */
-  --accent-emerald: #2D8B57;
-  --accent-emerald-light: #3CA870;
-  --accent-emerald-dim: #0f2818;
-  --glow-emerald: rgba(45, 139, 87, 0.7);
+  /* ============================================
+     RUBY - Passion, Energy, Alerts
+     ============================================ */
+  --ruby-950: #1a0208;
+  --ruby-900: #2a0312;
+  --ruby-800: #3d0a20;
+  --ruby-700: #5a0625;
+  --ruby-600: #8a0a38;
+  --ruby-500: #b00d4a;
+  --ruby-400: #e0115f;
+  --ruby-300: #ff3080;
+  --ruby-200: #ff6099;
+  --ruby-100: #ff99bb;
+  --ruby-glow: rgba(224, 17, 95, 0.65);
+  --ruby-glow-strong: rgba(224, 17, 95, 0.85);
 
-  /* Ruby - GBA Cartridge deep red */
-  --accent-ruby: #e0115f;
-  --accent-ruby-light: #ff3080;
-  --accent-ruby-dim: #3d0a20;
+  /* ============================================
+     SAPPHIRE - Depth, Trust, Information
+     ============================================ */
+  --sapphire-950: #040810;
+  --sapphire-900: #060c20;
+  --sapphire-800: #0a1838;
+  --sapphire-700: #082868;
+  --sapphire-600: #0a3580;
+  --sapphire-500: #0c4298;
+  --sapphire-400: #0F52BA;
+  --sapphire-300: #3070DD;
+  --sapphire-200: #5090f0;
+  --sapphire-100: #80b0ff;
+  --sapphire-glow: rgba(15, 82, 186, 0.6);
+  --sapphire-glow-strong: rgba(15, 82, 186, 0.85);
 
-  /* Sapphire - GBA Cartridge deep blue */
-  --accent-sapphire: #0F52BA;
-  --accent-sapphire-light: #3070DD;
-  --accent-sapphire-dim: #0a1838;
+  /* ============================================
+     EMERALD - Life, Success, Action
+     ============================================ */
+  --emerald-950: #040a06;
+  --emerald-900: #081810;
+  --emerald-800: #0f2818;
+  --emerald-700: #123a28;
+  --emerald-600: #1a5538;
+  --emerald-500: #247048;
+  --emerald-400: #2D8B57;
+  --emerald-300: #3CA870;
+  --emerald-200: #50c080;
+  --emerald-100: #70e0a0;
+  --emerald-glow: rgba(45, 139, 87, 0.7);
+  --emerald-glow-strong: rgba(45, 139, 87, 0.9);
 
-  /* Supporting colors */
-  --accent-green: #2D8B57;
-  --accent-teal: #40B8B0;
-  --accent-amber: #F0A830;
-  --accent-coral: #E85050;
-
-  /* Glow colors - GBA cartridge gemstone glows */
-  --glow-ruby: rgba(224, 17, 95, 0.65);
-  --glow-sapphire: rgba(15, 82, 186, 0.6);
-  --glow-green: rgba(45, 139, 87, 0.6);
-  --glow-teal: rgba(64, 184, 176, 0.5);
+  /* Semantic aliases for backward compatibility */
+  --accent-emerald: var(--emerald-400);
+  --accent-emerald-light: var(--emerald-300);
+  --accent-emerald-dim: var(--emerald-800);
+  --accent-ruby: var(--ruby-400);
+  --accent-ruby-light: var(--ruby-300);
+  --accent-ruby-dim: var(--ruby-800);
+  --accent-sapphire: var(--sapphire-400);
+  --accent-sapphire-light: var(--sapphire-300);
+  --accent-sapphire-dim: var(--sapphire-800);
+  --glow-emerald: var(--emerald-glow);
+  --glow-ruby: var(--ruby-glow);
+  --glow-sapphire: var(--sapphire-glow);
 
   /* Glass effect - slate grey tint */
   --glass-bg: rgba(20, 24, 30, 0.85);
@@ -54,40 +87,32 @@
   --glass-highlight: rgba(190, 200, 220, 0.1);
   --blur-amount: 20px;
 
-  /* Shadows with color */
+  /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --shadow-glow-emerald: 0 0 40px rgba(0, 255, 106, 0.25);
-  --shadow-glow-ruby: 0 0 40px rgba(255, 34, 85, 0.3);
-  --shadow-glow-sapphire: 0 0 40px rgba(34, 136, 255, 0.3);
 }
 
-/* Display P3 wide gamut colors for modern iPhones - GBA cartridge colors */
+/* Display P3 wide gamut colors for modern iPhones */
 @media (color-gamut: p3) {
   :root {
-    /* Emerald cartridge - darker, richer #2D8B57 */
-    --accent-emerald: color(display-p3 0.18 0.55 0.35);
-    --accent-emerald-light: color(display-p3 0.24 0.66 0.44);
-    --glow-emerald: color(display-p3 0.18 0.55 0.35 / 0.75);
+    /* Ruby P3 enhanced */
+    --ruby-400: color(display-p3 0.90 0.08 0.40);
+    --ruby-300: color(display-p3 1.0 0.20 0.52);
+    --ruby-glow: color(display-p3 0.90 0.08 0.40 / 0.7);
+    --ruby-glow-strong: color(display-p3 0.90 0.08 0.40 / 0.9);
 
-    /* Ruby cartridge - #e0115f enhanced */
-    --accent-ruby: color(display-p3 0.90 0.08 0.40);
-    --accent-ruby-light: color(display-p3 1.0 0.20 0.52);
+    /* Sapphire P3 enhanced */
+    --sapphire-400: color(display-p3 0.08 0.34 0.76);
+    --sapphire-300: color(display-p3 0.20 0.46 0.88);
+    --sapphire-glow: color(display-p3 0.08 0.34 0.76 / 0.65);
+    --sapphire-glow-strong: color(display-p3 0.08 0.34 0.76 / 0.9);
 
-    /* Sapphire cartridge - #0F52BA enhanced */
-    --accent-sapphire: color(display-p3 0.08 0.34 0.76);
-    --accent-sapphire-light: color(display-p3 0.20 0.46 0.88);
-
-    /* Supporting colors enhanced */
-    --accent-green: color(display-p3 0.18 0.55 0.35);
-    --accent-teal: color(display-p3 0.25 0.72 0.69);
-    --accent-amber: color(display-p3 0.94 0.66 0.19);
-
-    /* Enhanced glows */
-    --glow-ruby: color(display-p3 0.90 0.08 0.40 / 0.7);
-    --glow-sapphire: color(display-p3 0.08 0.34 0.76 / 0.65);
-    --glow-green: color(display-p3 0.18 0.55 0.35 / 0.6);
+    /* Emerald P3 enhanced */
+    --emerald-400: color(display-p3 0.18 0.55 0.35);
+    --emerald-300: color(display-p3 0.24 0.66 0.44);
+    --emerald-glow: color(display-p3 0.18 0.55 0.35 / 0.75);
+    --emerald-glow-strong: color(display-p3 0.18 0.55 0.35 / 0.95);
   }
 }
 
@@ -182,7 +207,7 @@ html, body {
   gap: 10px;
 }
 
-/* Status text - fixed width to prevent gem movement, dim when connecting */
+/* Status text - fixed width to prevent gem movement, very dim when not connected */
 .status-text {
   width: 90px;
   text-align: center;
@@ -190,9 +215,10 @@ html, body {
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: var(--accent-emerald-dim);
-  text-shadow: 0 0 2px rgba(0, 255, 106, 0.2);
+  color: var(--text-dim);
+  text-shadow: none;
   transition: all 0.6s ease;
+  opacity: 0.5;
 }
 
 /* Status gems - hexagonal cut, vertical orientation (points top/bottom) */
@@ -213,55 +239,55 @@ html, body {
 
 .status-gem.gem-ruby {
   background:
-    linear-gradient(165deg, #280810 0%, #200608 40%, #180506 70%, #100304 100%);
+    linear-gradient(165deg, #1a0608 0%, #140405 40%, #100304 70%, #0a0202 100%);
   box-shadow:
-    inset 1px 1px 1px rgba(255, 80, 80, 0.1),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.7),
+    inset 1px 1px 1px rgba(255, 80, 80, 0.05),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.8),
     0 1px 2px rgba(0, 0, 0, 0.6);
+  opacity: 0.4;
 }
 
 .status-gem.gem-sapphire {
   background:
-    linear-gradient(165deg, #0c1828 0%, #081018 40%, #060a10 70%, #040608 100%);
+    linear-gradient(165deg, #080c14 0%, #06080c 40%, #040608 70%, #020304 100%);
   box-shadow:
-    inset 1px 1px 1px rgba(80, 120, 255, 0.1),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.7),
+    inset 1px 1px 1px rgba(80, 120, 255, 0.05),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.8),
     0 1px 2px rgba(0, 0, 0, 0.6);
+  opacity: 0.4;
 }
 
-/* Connected state - everything lights up like neon */
+/* Connected state - everything lights up */
 #connection-status.connected .status-text {
-  color: var(--accent-emerald);
+  color: var(--emerald-300);
   text-shadow:
-    0 0 8px var(--glow-emerald),
-    0 0 16px var(--glow-emerald),
-    0 0 24px var(--glow-emerald);
+    0 0 6px var(--emerald-glow),
+    0 0 12px var(--emerald-glow);
+  opacity: 1;
   animation: textGlow 2s ease-in-out infinite;
 }
 
 #connection-status.connected .status-gem.gem-ruby {
   background:
-    linear-gradient(165deg, #c02050 0%, #a01840 40%, #801030 70%, #600820 100%);
+    linear-gradient(165deg, #d03060 0%, #b02050 40%, #901840 70%, #701030 100%);
   box-shadow:
     inset 1px 1px 2px rgba(255, 150, 150, 0.5),
     inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-    0 0 8px 3px rgba(255, 80, 120, 1),
-    0 0 16px 6px rgba(224, 17, 95, 1),
-    0 0 32px 10px rgba(224, 17, 95, 0.7),
-    0 0 48px 14px rgba(224, 17, 95, 0.4);
+    0 0 8px 2px rgba(224, 17, 95, 0.8),
+    0 0 14px 4px rgba(224, 17, 95, 0.5);
+  opacity: 1;
   animation: gemPulseRuby 2s ease-in-out infinite;
 }
 
 #connection-status.connected .status-gem.gem-sapphire {
   background:
-    linear-gradient(165deg, #3060c0 0%, #2850a0 40%, #204080 70%, #183060 100%);
+    linear-gradient(165deg, #4080e0 0%, #3060c0 40%, #2850a0 70%, #204080 100%);
   box-shadow:
     inset 1px 1px 2px rgba(150, 180, 255, 0.5),
     inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-    0 0 8px 3px rgba(80, 130, 255, 1),
-    0 0 16px 6px rgba(15, 82, 186, 1),
-    0 0 32px 10px rgba(15, 82, 186, 0.7),
-    0 0 48px 14px rgba(15, 82, 186, 0.4);
+    0 0 8px 2px rgba(15, 82, 186, 0.8),
+    0 0 14px 4px rgba(15, 82, 186, 0.5);
+  opacity: 1;
   animation: gemPulseSapphire 2s ease-in-out infinite;
   animation-delay: 1s;
 }
@@ -283,42 +309,34 @@ html, body {
 @keyframes gemPulseRuby {
   0%, 100% {
     box-shadow:
-      inset 1px 1px 2px rgba(255, 150, 150, 0.5),
+      inset 1px 1px 2px rgba(255, 150, 150, 0.4),
       inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 6px 2px rgba(255, 80, 120, 0.9),
-      0 0 12px 4px rgba(224, 17, 95, 0.8),
-      0 0 24px 8px rgba(224, 17, 95, 0.5),
-      0 0 40px 12px rgba(224, 17, 95, 0.3);
+      0 0 6px 1px rgba(224, 17, 95, 0.5),
+      0 0 12px 3px rgba(224, 17, 95, 0.3);
   }
   50% {
     box-shadow:
       inset 1px 1px 2px rgba(255, 150, 150, 0.5),
       inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 10px 4px rgba(255, 80, 120, 1),
-      0 0 20px 8px rgba(224, 17, 95, 1),
-      0 0 40px 14px rgba(224, 17, 95, 0.8),
-      0 0 60px 18px rgba(224, 17, 95, 0.5);
+      0 0 10px 3px rgba(224, 17, 95, 0.8),
+      0 0 16px 5px rgba(224, 17, 95, 0.5);
   }
 }
 
 @keyframes gemPulseSapphire {
   0%, 100% {
     box-shadow:
-      inset 1px 1px 2px rgba(150, 180, 255, 0.5),
+      inset 1px 1px 2px rgba(150, 180, 255, 0.4),
       inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 6px 2px rgba(80, 130, 255, 0.9),
-      0 0 12px 4px rgba(15, 82, 186, 0.8),
-      0 0 24px 8px rgba(15, 82, 186, 0.5),
-      0 0 40px 12px rgba(15, 82, 186, 0.3);
+      0 0 6px 1px rgba(15, 82, 186, 0.5),
+      0 0 12px 3px rgba(15, 82, 186, 0.3);
   }
   50% {
     box-shadow:
       inset 1px 1px 2px rgba(150, 180, 255, 0.5),
       inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 10px 4px rgba(80, 130, 255, 1),
-      0 0 20px 8px rgba(15, 82, 186, 1),
-      0 0 40px 14px rgba(15, 82, 186, 0.8),
-      0 0 60px 18px rgba(15, 82, 186, 0.5);
+      0 0 10px 3px rgba(15, 82, 186, 0.8),
+      0 0 16px 5px rgba(15, 82, 186, 0.5);
   }
 }
 
@@ -405,24 +423,23 @@ html, body {
   background: rgba(16, 20, 26, 0.92);
   backdrop-filter: blur(var(--blur-amount));
   -webkit-backdrop-filter: blur(var(--blur-amount));
-  border: 1px solid rgba(45, 139, 87, 0.35);
+  border: 1px solid var(--emerald-700);
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     var(--shadow-lg),
-    0 0 20px rgba(45, 139, 87, 0.15),
+    0 0 20px var(--emerald-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .session-card:hover {
-  border-color: rgba(0, 255, 106, 0.4);
+  border-color: var(--emerald-500);
   transform: translateY(-4px);
   box-shadow:
     var(--shadow-lg),
-    0 0 20px rgba(0, 255, 106, 0.15),
-    0 0 40px rgba(0, 212, 200, 0.1),
+    0 0 24px var(--emerald-glow),
     inset 0 1px 0 var(--glass-highlight);
 }
 
@@ -431,9 +448,9 @@ html, body {
 }
 
 .session-card.has-activity {
-  border-color: rgba(52, 211, 153, 0.5);
+  border-color: var(--emerald-400);
   box-shadow:
-    0 0 40px var(--glow-green),
+    0 0 40px var(--emerald-glow-strong),
     var(--shadow-lg),
     inset 0 1px 0 var(--glass-highlight);
 }
@@ -466,34 +483,34 @@ html, body {
 }
 
 .session-card-title .activity-dot.active {
-  background: var(--accent-green);
-  box-shadow: 0 0 8px var(--glow-green), 0 0 16px var(--glow-green);
+  background: var(--emerald-300);
+  box-shadow: 0 0 8px var(--emerald-glow), 0 0 16px var(--emerald-glow);
   animation: activityGlow 2s ease-in-out infinite;
 }
 
 .session-card-title .activity-dot.idle {
-  background: var(--accent-amber);
-  box-shadow: 0 0 6px var(--glow-amber), 0 0 12px var(--glow-amber);
+  background: var(--emerald-600);
+  box-shadow: 0 0 6px var(--emerald-glow), 0 0 12px var(--emerald-glow);
   animation: idleGlow 3s ease-in-out infinite;
 }
 
 @keyframes activityGlow {
   0%, 100% {
-    box-shadow: 0 0 6px var(--glow-green), 0 0 12px var(--glow-green);
+    box-shadow: 0 0 6px var(--emerald-glow), 0 0 12px var(--emerald-glow);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 12px var(--glow-green), 0 0 24px var(--glow-green);
+    box-shadow: 0 0 12px var(--emerald-glow-strong), 0 0 24px var(--emerald-glow);
     transform: scale(1.15);
   }
 }
 
 @keyframes idleGlow {
   0%, 100% {
-    box-shadow: 0 0 4px var(--glow-amber), 0 0 8px var(--glow-amber);
+    box-shadow: 0 0 4px var(--emerald-glow), 0 0 8px var(--emerald-glow);
   }
   50% {
-    box-shadow: 0 0 8px var(--glow-amber), 0 0 16px var(--glow-amber);
+    box-shadow: 0 0 8px var(--emerald-glow), 0 0 16px var(--emerald-glow);
   }
 }
 
@@ -518,16 +535,16 @@ html, body {
 }
 
 .session-card-badge.working {
-  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.1));
-  color: var(--accent-green);
-  border-color: rgba(52, 211, 153, 0.3);
-  box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
+  background: linear-gradient(135deg, rgba(45, 139, 87, 0.25), rgba(45, 139, 87, 0.1));
+  color: var(--emerald-300);
+  border-color: var(--emerald-600);
+  box-shadow: 0 0 12px var(--emerald-glow);
 }
 
 .session-card-badge.waiting {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
-  color: var(--accent-amber);
-  border-color: rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, rgba(15, 82, 186, 0.2), rgba(15, 82, 186, 0.1));
+  color: var(--sapphire-300);
+  border-color: var(--sapphire-600);
 }
 
 .session-card-path {
@@ -595,11 +612,10 @@ html, body {
 .session-card-time {
   font-size: 11px;
   font-weight: 600;
-  color: var(--accent-amber);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: center;
-  text-shadow: 0 0 6px rgba(240, 168, 48, 0.4);
 }
 
 .session-card-actions {
@@ -625,21 +641,21 @@ html, body {
 }
 
 .card-action-btn:hover {
-  background: rgba(0, 255, 106, 0.1);
-  border-color: rgba(0, 255, 106, 0.4);
-  color: var(--accent-emerald);
+  background: rgba(45, 139, 87, 0.15);
+  border-color: var(--emerald-500);
+  color: var(--emerald-300);
   transform: translateY(-2px);
   box-shadow:
-    0 4px 12px rgba(0, 255, 106, 0.15),
+    0 4px 12px var(--emerald-glow),
     inset 0 1px 0 var(--glass-highlight);
 }
 
 .card-action-btn:active {
-  background: linear-gradient(135deg, var(--accent-emerald-dim), var(--accent-emerald));
+  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-400));
   border-color: transparent;
   color: white;
   transform: scale(0.92);
-  box-shadow: 0 0 20px var(--glow-emerald);
+  box-shadow: 0 0 20px var(--emerald-glow-strong);
 }
 
 /* Empty State */
@@ -729,13 +745,13 @@ html, body {
 }
 
 .empty-state code {
-  background: rgba(240, 168, 48, 0.15);
+  background: rgba(15, 82, 186, 0.15);
   padding: 4px 8px;
   border-radius: 4px;
   font-family: 'Menlo', monospace;
   font-size: 12px;
-  color: var(--accent-amber);
-  border: 1px solid rgba(240, 168, 48, 0.25);
+  color: var(--sapphire-200);
+  border: 1px solid var(--sapphire-700);
 }
 
 /* Always show the hint section at bottom of dashboard */
@@ -823,7 +839,8 @@ html, body {
 }
 
 .split-panel-title .activity-dot.active {
-  background: var(--accent-green);
+  background: var(--emerald-300);
+  box-shadow: 0 0 6px var(--emerald-glow);
   animation: pulse 1s infinite;
 }
 
@@ -944,50 +961,50 @@ html, body {
 }
 
 .header-ctrl-btn:active {
-  background: linear-gradient(135deg, var(--accent-teal), var(--accent-emerald));
+  background: linear-gradient(135deg, var(--emerald-600), var(--emerald-400));
   border-color: transparent;
   color: white;
   transform: scale(0.92);
-  box-shadow: 0 0 16px var(--glow-teal);
+  box-shadow: 0 0 16px var(--emerald-glow);
 }
 
 .status-badge {
   font-size: 10px;
   padding: 5px 12px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.1));
-  color: var(--accent-green);
+  background: linear-gradient(135deg, rgba(45, 139, 87, 0.2), rgba(45, 139, 87, 0.1));
+  color: var(--emerald-300);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
+  border: 1px solid var(--emerald-600);
+  box-shadow: 0 0 12px var(--emerald-glow);
 }
 
 .status-badge.connected {
-  background: linear-gradient(135deg, rgba(52, 211, 153, 0.25), rgba(52, 211, 153, 0.1));
-  color: var(--accent-green);
-  border-color: rgba(52, 211, 153, 0.4);
-  box-shadow: 0 0 16px var(--glow-green);
+  background: linear-gradient(135deg, rgba(45, 139, 87, 0.25), rgba(45, 139, 87, 0.1));
+  color: var(--emerald-300);
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 16px var(--emerald-glow);
 }
 
 .status-badge.disconnected {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.1));
-  color: var(--accent-red);
-  border-color: rgba(248, 113, 113, 0.3);
+  background: linear-gradient(135deg, rgba(224, 17, 95, 0.2), rgba(224, 17, 95, 0.1));
+  color: var(--ruby-300);
+  border-color: var(--ruby-600);
   box-shadow: none;
 }
 
 .status-badge.connecting {
-  background: linear-gradient(135deg, rgba(26, 109, 214, 0.2), rgba(26, 109, 214, 0.1));
-  color: var(--accent-sapphire-light);
-  border-color: rgba(26, 109, 214, 0.3);
+  background: linear-gradient(135deg, rgba(15, 82, 186, 0.2), rgba(15, 82, 186, 0.1));
+  color: var(--sapphire-300);
+  border-color: var(--sapphire-600);
   animation: pulse-badge 1.5s infinite;
 }
 
 @keyframes pulse-badge {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(26, 109, 214, 0.2); }
-  50% { opacity: 0.7; box-shadow: 0 0 16px rgba(26, 109, 214, 0.4); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--sapphire-glow); }
+  50% { opacity: 0.7; box-shadow: 0 0 16px var(--sapphire-glow); }
 }
 
 /* Loading overlay for session card */
@@ -998,7 +1015,7 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 106, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(45, 139, 87, 0.1), transparent);
   animation: shimmer 1.5s infinite;
 }
 
@@ -1039,19 +1056,19 @@ html, body {
   0% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 0 rgba(52, 211, 153, 0.4),
+      0 0 0 0 rgba(45, 139, 87, 0.5),
       inset 0 1px 0 var(--glass-highlight);
   }
   70% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 12px rgba(52, 211, 153, 0),
+      0 0 0 12px rgba(45, 139, 87, 0),
       inset 0 1px 0 var(--glass-highlight);
   }
   100% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 0 rgba(52, 211, 153, 0),
+      0 0 0 0 rgba(45, 139, 87, 0),
       inset 0 1px 0 var(--glass-highlight);
   }
 }
@@ -1121,7 +1138,7 @@ html, body {
   }
   50% {
     transform: scale(0.9);
-    box-shadow: 0 0 24px var(--glow-teal);
+    box-shadow: 0 0 24px var(--emerald-glow);
   }
   100% {
     transform: scale(1);
@@ -1136,10 +1153,10 @@ html, body {
 /* Card action button glow pulse */
 @keyframes actionGlow {
   0% {
-    box-shadow: 0 0 0 0 rgba(0, 255, 106, 0.5);
+    box-shadow: 0 0 0 0 rgba(45, 139, 87, 0.6);
   }
   100% {
-    box-shadow: 0 0 0 8px rgba(0, 255, 106, 0);
+    box-shadow: 0 0 0 8px rgba(45, 139, 87, 0);
   }
 }
 
@@ -1172,12 +1189,12 @@ html, body {
 /* Badge working pulse - more prominent */
 @keyframes workingPulse {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
-    border-color: rgba(52, 211, 153, 0.3);
+    box-shadow: 0 0 8px var(--emerald-glow);
+    border-color: var(--emerald-600);
   }
   50% {
-    box-shadow: 0 0 20px rgba(52, 211, 153, 0.5);
-    border-color: rgba(52, 211, 153, 0.6);
+    box-shadow: 0 0 20px var(--emerald-glow-strong);
+    border-color: var(--emerald-500);
   }
 }
 
@@ -1239,20 +1256,20 @@ html, body {
   justify-content: center;
   width: 48px;
   height: 40px;
-  background: var(--accent-teal);
+  background: var(--emerald-400);
   border: none;
   border-radius: 8px;
   color: white;
   cursor: pointer;
   transition: all 0.15s;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 0 10px var(--glow-teal);
+  box-shadow: 0 0 10px var(--emerald-glow);
 }
 
 #keyboard-toggle:active {
-  background: var(--accent-emerald);
+  background: var(--emerald-500);
   transform: scale(0.95);
-  box-shadow: 0 0 16px var(--glow-emerald);
+  box-shadow: 0 0 16px var(--emerald-glow-strong);
 }
 
 /* Hidden input for iOS keyboard */
