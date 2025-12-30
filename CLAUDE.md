@@ -142,20 +142,39 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 - Each session has its own 10K line scrollback buffer
 - Named pipes used for IPC (Windows: `\\.\pipe\claude-relay-<name>`)
 
-## Future: Cloudflare Deployment
+## Production Deployment
 
-This project will be ported to a Cloudflare-hosted website for public access.
+CNM is deployed via Cloudflare Tunnel for secure remote access.
 
-**Planned architecture:**
+**Architecture:**
 ```
-[Home PC] <-- Cloudflare Tunnel --> [Cloudflare Edge] <-- HTTPS --> [iPhone]
+[PC1: CNM Server]     [PC2: Cloudflare Tunnel]     [Users]
+ 192.168.1.204:3001  <----  cloudflared  ---->  walterfam.xyz/cnm
 ```
 
-**Migration tasks:**
-- [ ] Set up Cloudflare Tunnel (`cloudflared`) to expose local relay
-- [ ] Configure custom domain with SSL
-- [ ] Add proper authentication (replace static token)
-- [ ] Implement rate limiting and abuse protection
-- [ ] Consider Cloudflare Workers for edge caching/optimization
+**Access URLs:**
+- **Production**: `https://walterfam.xyz/cnm?token=<AUTH_TOKEN>`
+- **LAN fallback**: `https://192.168.1.204:3001/?token=<AUTH_TOKEN>`
 
-**Current local setup** continues to work for development and private use.
+**How it works:**
+1. CNM server runs on PC1 (this machine) on port 3001
+2. Cloudflare Tunnel on PC2 routes `walterfam.xyz/cnm/*` to `192.168.1.204:3001`
+3. Server strips `/cnm` prefix from incoming requests (see `index.js` lines 141-144)
+4. Client detects `/cnm` path and includes it in WebSocket connections
+
+## Windows Firewall Setup
+
+Allow incoming connections on port 3001:
+
+```cmd
+netsh advfirewall firewall add rule name="CNM Server" dir=in action=allow protocol=tcp localport=3001
+```
+
+To remove the rule later:
+```cmd
+netsh advfirewall firewall delete rule name="CNM Server"
+```
+
+## Local Development
+
+For local-only access (no Cloudflare), the server works directly on the LAN.

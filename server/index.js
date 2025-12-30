@@ -400,8 +400,9 @@ server.listen(config.PORT, config.HOST, () => {
   console.log('    Start a link with:');
   console.log('      node launcher.js <name> [working-dir]');
   console.log('');
-  console.log('    Connect from mobile at:');
-  console.log(`      https://<your-ip>:${config.PORT}/?token=${config.AUTH_TOKEN}`);
+  console.log('    Connect from:');
+  console.log(`      Production:  https://walterfam.xyz/cnm?token=${config.AUTH_TOKEN}`);
+  console.log(`      LAN:         https://192.168.1.204:${config.PORT}/?token=${config.AUTH_TOKEN}`);
   console.log('');
 
   // Show existing sessions
