@@ -598,7 +598,16 @@
     setConnectionStatus('', 'Connecting');
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/?token=${encodeURIComponent(token)}`;
+
+    // Handle both local dev and Cloudflare deployment (walterfam.xyz/cnm)
+    let wsUrl;
+    if (window.location.pathname.startsWith('/cnm')) {
+      // Cloudflare deployment - include /cnm prefix in WebSocket URL
+      wsUrl = `${protocol}//${window.location.host}/cnm/?token=${encodeURIComponent(token)}`;
+    } else {
+      // Local development
+      wsUrl = `${protocol}//${window.location.host}/?token=${encodeURIComponent(token)}`;
+    }
 
     try {
       ws = new WebSocket(wsUrl);

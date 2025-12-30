@@ -135,7 +135,12 @@ const server = createServer(httpsOptions, (req, res) => {
 
   // Parse URL to strip query string
   const url = new URL(req.url, `https://${req.headers.host}`);
-  const pathname = url.pathname;
+  let pathname = url.pathname;
+
+  // Strip /cnm prefix if present (for Cloudflare routing via walterfam.xyz/cnm)
+  if (pathname.startsWith('/cnm')) {
+    pathname = pathname.substring(4) || '/';
+  }
 
   // For static files, check auth first
   const auth = validateAuth(req);
