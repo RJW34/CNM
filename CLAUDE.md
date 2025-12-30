@@ -175,6 +175,56 @@ To remove the rule later:
 netsh advfirewall firewall delete rule name="CNM Server"
 ```
 
+## Deployment Protocol for walterfam.xyz (IMPORTANT)
+
+**If you are Claude Code CLI running on the walterfam.xyz hosting machine (PC2), follow this protocol BEFORE launching or updating the website:**
+
+### Pre-Launch Checklist
+
+1. **Pull latest CNM version**:
+   ```bash
+   cd /path/to/CNM
+   git fetch origin master
+   git pull origin master
+   ```
+
+2. **Install/update dependencies** (if package.json changed):
+   ```bash
+   cd server && npm install
+   ```
+
+3. **Verify .env exists** with valid `RELAY_AUTH_TOKEN`:
+   ```bash
+   test -f server/.env && echo "OK" || echo "MISSING - create server/.env with RELAY_AUTH_TOKEN"
+   ```
+
+4. **Ensure Cloudflare Tunnel routes `/cnm/*` to PC1**:
+   - Target: `https://192.168.1.204:3001`
+   - The tunnel should proxy WebSocket connections
+   - CNM server handles `/cnm` prefix stripping internally
+
+### Sync Protocol
+
+When updating walterfam.xyz, always sync CNM first:
+
+```bash
+# 1. Update CNM repo
+git -C /path/to/CNM pull origin master
+
+# 2. Restart tunnel if CNM server config changed
+# (Tunnel config should route /cnm/* to 192.168.1.204:3001)
+
+# 3. Verify CNM is reachable
+curl -k https://192.168.1.204:3001/ || echo "CNM server not responding on PC1"
+```
+
+### Important Notes
+
+- CNM server runs on **PC1** (192.168.1.204:3001), NOT on the walterfam.xyz machine
+- The walterfam.xyz machine only runs the Cloudflare Tunnel that proxies to PC1
+- Auth token must match between PC1's `server/.env` and bookmark URLs
+- If CNM features are added/changed, pull updates before restarting the tunnel
+
 ## Local Development
 
 For local-only access (no Cloudflare), the server works directly on the LAN.
