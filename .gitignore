@@ -26,6 +26,9 @@ npm-debug.log*
 *.tmp
 *.temp
 
+# Test screenshots
+screenshot-*.png
+
 # Reference images (optional - can include if desired)
 # *.png
 # *.jpg
