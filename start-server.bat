@@ -11,7 +11,8 @@ echo  Claude Code Relay Server
 echo ===============================================
 echo.
 echo Starting server on port 3001...
-echo Access from iPhone: https://YOUR_IP:3001/?token=change-this-secret-token
+echo Access from iPhone: https://YOUR_IP:3001/?token=YOUR_TOKEN
+echo (Token is configured in server\.env)
 echo.
 echo Press Ctrl+C to stop
 echo ===============================================

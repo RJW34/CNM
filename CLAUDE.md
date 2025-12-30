@@ -39,8 +39,8 @@ cd server && npm start
 # Attach a session (from project directory)
 node attach.js my-project claude
 
-# Connect from iPhone
-# https://<your-ip>:3000/?token=change-this-secret-token
+# Connect from iPhone (token configured in server/.env)
+# https://<your-ip>:3001/?token=YOUR_TOKEN
 ```
 
 ## Architecture
@@ -122,13 +122,18 @@ node attach.js my-project claude   # Run from project directory
 
 ## Configuration
 
-Edit `server/config.js` or use environment variables:
+Create `server/.env` with your settings (see `server/config.js` for defaults):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RELAY_AUTH_TOKEN` | `change-this-secret-token` | Bearer token |
-| `RELAY_PORT` | `3000` | Server port |
+| `RELAY_AUTH_TOKEN` | (required) | Bearer token for authentication |
+| `RELAY_PORT` | `3001` | Server port |
 | `CLAUDE_PATH` | Auto-detected | Full path to claude.exe |
+
+**Generate a secure token**:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ## Critical Constraints
 
