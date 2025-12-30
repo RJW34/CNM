@@ -1,0 +1,156 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**Celio's Network Machine** - a secure WebSocket-based terminal relay system named after [Celio's Network Machine](https://bulbapedia.bulbagarden.net/wiki/Celio) from Pokémon FireRed/LeafGreen, which connects distant regions using Ruby & Sapphire gemstones.
+
+This project enables remote terminal access from an iPhone to Claude Code CLI sessions running on a trusted host machine. Sessions are launched independently and persist across disconnects.
+
+## Quick Start (Batch Files)
+
+**Double-click these from the project root:**
+
+| File | Purpose |
+|------|---------|
+| `start-server.bat` | Start relay server (run once) |
+| `attach-session.bat <name> [dir]` | Attach generic Claude session |
+| `attach-gboperator.bat` | Quick-start GBOperatorHelper |
+| `start-all.bat <name> [dir]` | Server + session in one command |
+
+**PowerShell alternatives:**
+```powershell
+.\scripts\Start-RelayServer.ps1 [-Background]
+.\scripts\Attach-Session.ps1 -SessionName "myproject" [-WorkingDirectory "C:\Path"]
+```
+
+**Manual setup:**
+```bash
+# Install dependencies (first time)
+cd server && npm install
+
+# Generate SSL certificates (first time)
+cd certs && openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "//CN=localhost"
+
+# Start relay server
+cd server && npm start
+
+# Attach a session (from project directory)
+node attach.js my-project claude
+
+# Connect from iPhone
+# https://<your-ip>:3000/?token=change-this-secret-token
+```
+
+## Architecture
+
+```
+[Session Launcher] -- PTY + named pipe --> [Session Registry]
+                                                   |
+[iPhone Client] <-- WebSocket --> [Relay Server] --+-- connects to any session
+```
+
+- **Session Launcher** (`launcher.js`): Spawns Claude in a PTY, exposes via named pipe, registers in `~/.claude-relay/sessions/`
+- **Relay Server** (`index.js`): Lists available sessions, bridges WebSocket clients to session pipes
+- **Web Client** (`client/web/`): Session picker UI + xterm.js terminal
+
+## Key Files
+
+```
+server/
+├── index.js          # Relay server - session discovery, WebSocket-to-pipe bridge
+├── launcher.js       # Session launcher - spawns Claude in managed PTY
+├── config.js         # Configuration (auth token, ports, paths)
+├── session.js        # Legacy direct-spawn session management
+└── pty-manager.js    # PTY utilities
+
+client/web/
+├── index.html        # Session picker + terminal UI
+├── app.js            # WebSocket client, session selection, xterm.js
+└── style.css         # Mobile-optimized styles
+
+~/.claude-relay/sessions/   # Session registry (auto-managed)
+├── my-project.json
+└── another-project.json
+```
+
+## Commands
+
+```bash
+# Start relay server (run once)
+cd server && npm start
+
+# Option 1: launcher.js - Start session in specific directory
+node launcher.js <session-name> [working-directory]
+
+# Option 2: attach.js - Wrap command with relay access (recommended)
+node attach.js <session-name> claude
+
+# Examples:
+node launcher.js frontend "C:\Code\my-app\frontend"
+node attach.js my-project claude   # Run from project directory
+```
+
+## Two Ways to Start Sessions
+
+| Tool | Use Case |
+|------|----------|
+| `launcher.js` | Start Claude in a specific directory from anywhere |
+| `attach.js` | Run from within your project directory, wraps Claude with relay access |
+
+**Recommended workflow**: `cd` to your project, then `node attach.js project-name claude`
+
+## Messaging Protocol
+
+**Client → Server:**
+```json
+{"type": "list_sessions"}
+{"type": "connect_session", "sessionId": "my-project"}
+{"type": "input", "data": "string"}
+{"type": "control", "key": "CTRL_C | CTRL_D | ESC"}
+{"type": "resize", "cols": 120, "rows": 30}
+```
+
+**Server → Client:**
+```json
+{"type": "sessions", "sessions": [...]}
+{"type": "output", "data": "string"}
+{"type": "scrollback", "data": "string"}
+{"type": "status", "state": "connected | disconnected | error"}
+```
+
+## Configuration
+
+Edit `server/config.js` or use environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RELAY_AUTH_TOKEN` | `change-this-secret-token` | Bearer token |
+| `RELAY_PORT` | `3000` | Server port |
+| `CLAUDE_PATH` | Auto-detected | Full path to claude.exe |
+
+## Critical Constraints
+
+- HTTPS required - no exceptions
+- Sessions persist independently of relay server
+- Each session has its own 10K line scrollback buffer
+- Named pipes used for IPC (Windows: `\\.\pipe\claude-relay-<name>`)
+
+## Future: Cloudflare Deployment
+
+This project will be ported to a Cloudflare-hosted website for public access.
+
+**Planned architecture:**
+```
+[Home PC] <-- Cloudflare Tunnel --> [Cloudflare Edge] <-- HTTPS --> [iPhone]
+```
+
+**Migration tasks:**
+- [ ] Set up Cloudflare Tunnel (`cloudflared`) to expose local relay
+- [ ] Configure custom domain with SSL
+- [ ] Add proper authentication (replace static token)
+- [ ] Implement rate limiting and abuse protection
+- [ ] Consider Cloudflare Workers for edge caching/optimization
+
+**Current local setup** continues to work for development and private use.

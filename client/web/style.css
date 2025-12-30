@@ -1,0 +1,1309 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Base colors - Medium slate grey theme for contrast */
+  --bg-primary: #1a1e24;
+  --bg-ocean: #1e2228;
+  --bg-secondary: rgba(26, 30, 38, 0.95);
+  --bg-tertiary: rgba(32, 36, 44, 0.92);
+  --bg-card: rgba(22, 26, 32, 0.88);
+  --border-color: rgba(90, 100, 120, 0.4);
+  --border-light: rgba(130, 140, 160, 0.18);
+
+  /* Text colors - warm tropical whites */
+  --text-primary: #f0f8ff;
+  --text-secondary: #a0d0e8;
+  --text-muted: #5090a8;
+  --text-dim: #305868;
+
+  /* Emerald - GBA Cartridge green (darker, richer) */
+  --accent-emerald: #2D8B57;
+  --accent-emerald-light: #3CA870;
+  --accent-emerald-dim: #0f2818;
+  --glow-emerald: rgba(45, 139, 87, 0.7);
+
+  /* Ruby - GBA Cartridge deep red */
+  --accent-ruby: #e0115f;
+  --accent-ruby-light: #ff3080;
+  --accent-ruby-dim: #3d0a20;
+
+  /* Sapphire - GBA Cartridge deep blue */
+  --accent-sapphire: #0F52BA;
+  --accent-sapphire-light: #3070DD;
+  --accent-sapphire-dim: #0a1838;
+
+  /* Supporting colors */
+  --accent-green: #2D8B57;
+  --accent-teal: #40B8B0;
+  --accent-amber: #F0A830;
+  --accent-coral: #E85050;
+
+  /* Glow colors - GBA cartridge gemstone glows */
+  --glow-ruby: rgba(224, 17, 95, 0.65);
+  --glow-sapphire: rgba(15, 82, 186, 0.6);
+  --glow-green: rgba(45, 139, 87, 0.6);
+  --glow-teal: rgba(64, 184, 176, 0.5);
+
+  /* Glass effect - slate grey tint */
+  --glass-bg: rgba(20, 24, 30, 0.85);
+  --glass-border: rgba(110, 120, 140, 0.3);
+  --glass-highlight: rgba(190, 200, 220, 0.1);
+  --blur-amount: 20px;
+
+  /* Shadows with color */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow-emerald: 0 0 40px rgba(0, 255, 106, 0.25);
+  --shadow-glow-ruby: 0 0 40px rgba(255, 34, 85, 0.3);
+  --shadow-glow-sapphire: 0 0 40px rgba(34, 136, 255, 0.3);
+}
+
+/* Display P3 wide gamut colors for modern iPhones - GBA cartridge colors */
+@media (color-gamut: p3) {
+  :root {
+    /* Emerald cartridge - darker, richer #2D8B57 */
+    --accent-emerald: color(display-p3 0.18 0.55 0.35);
+    --accent-emerald-light: color(display-p3 0.24 0.66 0.44);
+    --glow-emerald: color(display-p3 0.18 0.55 0.35 / 0.75);
+
+    /* Ruby cartridge - #e0115f enhanced */
+    --accent-ruby: color(display-p3 0.90 0.08 0.40);
+    --accent-ruby-light: color(display-p3 1.0 0.20 0.52);
+
+    /* Sapphire cartridge - #0F52BA enhanced */
+    --accent-sapphire: color(display-p3 0.08 0.34 0.76);
+    --accent-sapphire-light: color(display-p3 0.20 0.46 0.88);
+
+    /* Supporting colors enhanced */
+    --accent-green: color(display-p3 0.18 0.55 0.35);
+    --accent-teal: color(display-p3 0.25 0.72 0.69);
+    --accent-amber: color(display-p3 0.94 0.66 0.19);
+
+    /* Enhanced glows */
+    --glow-ruby: color(display-p3 0.90 0.08 0.40 / 0.7);
+    --glow-sapphire: color(display-p3 0.08 0.34 0.76 / 0.65);
+    --glow-green: color(display-p3 0.18 0.55 0.35 / 0.6);
+  }
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: -webkit-fill-available;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Header - Glass effect with left-right layout */
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+/* Left section with stacked title */
+#header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* Title block - stacked layout, centered to itself */
+#title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title-main {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  line-height: 1;
+  color: #3CA870;
+  text-shadow:
+    /* Sharp 3D extrusion - deep emerald layers */
+    1px 1px 0 #2D8B57,
+    2px 2px 0 #1a5035,
+    3px 3px 0 #0f3020,
+    4px 4px 0 #081810,
+    /* Ground shadow */
+    4px 5px 8px rgba(0, 0, 0, 0.8);
+  filter: drop-shadow(0 0 12px var(--glow-emerald));
+}
+
+.title-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  line-height: 1;
+  margin-top: 3px;
+  color: #3CA870;
+  text-shadow:
+    /* Subtle emerald depth */
+    1px 1px 0 #2D8B57,
+    2px 2px 0 #1a5035,
+    /* Ground shadow */
+    2px 3px 5px rgba(0, 0, 0, 0.6);
+  filter: drop-shadow(0 0 6px var(--glow-emerald));
+}
+
+/* Connection status - right side with gem indicators */
+#connection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Status text - fixed width to prevent gem movement, dim when connecting */
+.status-text {
+  width: 90px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-emerald-dim);
+  text-shadow: 0 0 2px rgba(0, 255, 106, 0.2);
+  transition: all 0.6s ease;
+}
+
+/* Status gems - hexagonal cut, vertical orientation (points top/bottom) */
+.status-gem {
+  width: 14px;
+  height: 28px;
+  clip-path: polygon(
+    50% 0%,
+    100% 15%,
+    100% 85%,
+    50% 100%,
+    0% 85%,
+    0% 15%
+  );
+  transition: all 0.5s ease;
+  position: relative;
+}
+
+.status-gem.gem-ruby {
+  background:
+    linear-gradient(165deg, #280810 0%, #200608 40%, #180506 70%, #100304 100%);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 80, 80, 0.1),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.status-gem.gem-sapphire {
+  background:
+    linear-gradient(165deg, #0c1828 0%, #081018 40%, #060a10 70%, #040608 100%);
+  box-shadow:
+    inset 1px 1px 1px rgba(80, 120, 255, 0.1),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Connected state - everything lights up like neon */
+#connection-status.connected .status-text {
+  color: var(--accent-emerald);
+  text-shadow:
+    0 0 8px var(--glow-emerald),
+    0 0 16px var(--glow-emerald),
+    0 0 24px var(--glow-emerald);
+  animation: textGlow 2s ease-in-out infinite;
+}
+
+#connection-status.connected .status-gem.gem-ruby {
+  background:
+    linear-gradient(165deg, #c02050 0%, #a01840 40%, #801030 70%, #600820 100%);
+  box-shadow:
+    inset 1px 1px 2px rgba(255, 150, 150, 0.5),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.3),
+    0 0 8px 3px rgba(255, 80, 120, 1),
+    0 0 16px 6px rgba(224, 17, 95, 1),
+    0 0 32px 10px rgba(224, 17, 95, 0.7),
+    0 0 48px 14px rgba(224, 17, 95, 0.4);
+  animation: gemPulseRuby 2s ease-in-out infinite;
+}
+
+#connection-status.connected .status-gem.gem-sapphire {
+  background:
+    linear-gradient(165deg, #3060c0 0%, #2850a0 40%, #204080 70%, #183060 100%);
+  box-shadow:
+    inset 1px 1px 2px rgba(150, 180, 255, 0.5),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.3),
+    0 0 8px 3px rgba(80, 130, 255, 1),
+    0 0 16px 6px rgba(15, 82, 186, 1),
+    0 0 32px 10px rgba(15, 82, 186, 0.7),
+    0 0 48px 14px rgba(15, 82, 186, 0.4);
+  animation: gemPulseSapphire 2s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+@keyframes textGlow {
+  0%, 100% {
+    text-shadow:
+      0 0 6px var(--glow-emerald),
+      0 0 12px var(--glow-emerald);
+  }
+  50% {
+    text-shadow:
+      0 0 10px var(--glow-emerald),
+      0 0 20px var(--glow-emerald),
+      0 0 30px var(--glow-emerald);
+  }
+}
+
+@keyframes gemPulseRuby {
+  0%, 100% {
+    box-shadow:
+      inset 1px 1px 2px rgba(255, 150, 150, 0.5),
+      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
+      0 0 6px 2px rgba(255, 80, 120, 0.9),
+      0 0 12px 4px rgba(224, 17, 95, 0.8),
+      0 0 24px 8px rgba(224, 17, 95, 0.5),
+      0 0 40px 12px rgba(224, 17, 95, 0.3);
+  }
+  50% {
+    box-shadow:
+      inset 1px 1px 2px rgba(255, 150, 150, 0.5),
+      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
+      0 0 10px 4px rgba(255, 80, 120, 1),
+      0 0 20px 8px rgba(224, 17, 95, 1),
+      0 0 40px 14px rgba(224, 17, 95, 0.8),
+      0 0 60px 18px rgba(224, 17, 95, 0.5);
+  }
+}
+
+@keyframes gemPulseSapphire {
+  0%, 100% {
+    box-shadow:
+      inset 1px 1px 2px rgba(150, 180, 255, 0.5),
+      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
+      0 0 6px 2px rgba(80, 130, 255, 0.9),
+      0 0 12px 4px rgba(15, 82, 186, 0.8),
+      0 0 24px 8px rgba(15, 82, 186, 0.5),
+      0 0 40px 12px rgba(15, 82, 186, 0.3);
+  }
+  50% {
+    box-shadow:
+      inset 1px 1px 2px rgba(150, 180, 255, 0.5),
+      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
+      0 0 10px 4px rgba(80, 130, 255, 1),
+      0 0 20px 8px rgba(15, 82, 186, 1),
+      0 0 40px 14px rgba(15, 82, 186, 0.8),
+      0 0 60px 18px rgba(15, 82, 186, 0.5);
+  }
+}
+
+/* View Controls - Centered glass effect */
+#view-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.view-btn, #refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+.view-btn:hover, #refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.view-btn:active, #refresh-btn:active {
+  transform: scale(0.95);
+}
+
+.view-btn.active {
+  background: linear-gradient(135deg, var(--accent-emerald-dim), var(--accent-emerald));
+  border-color: var(--accent-emerald);
+  color: white;
+  box-shadow:
+    0 0 16px var(--glow-emerald),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+#refresh-btn:hover {
+  color: var(--accent-sapphire-light);
+  box-shadow: 0 0 12px var(--glow-sapphire);
+}
+
+/* Views */
+.view {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+
+.view.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dashboard View */
+#dashboard-view {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+}
+
+#session-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+/* Session Card - Glassmorphism with stronger presence */
+.session-card {
+  position: relative;
+  background: rgba(16, 20, 26, 0.92);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border: 1px solid rgba(45, 139, 87, 0.35);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 20px rgba(45, 139, 87, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.session-card:hover {
+  border-color: rgba(0, 255, 106, 0.4);
+  transform: translateY(-4px);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 20px rgba(0, 255, 106, 0.15),
+    0 0 40px rgba(0, 212, 200, 0.1),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+.session-card:active {
+  transform: scale(0.98) translateY(-2px);
+}
+
+.session-card.has-activity {
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow:
+    0 0 40px var(--glow-green),
+    var(--shadow-lg),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+.session-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.session-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.session-card-title .activity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.session-card-title .activity-dot.active {
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--glow-green), 0 0 16px var(--glow-green);
+  animation: activityGlow 2s ease-in-out infinite;
+}
+
+.session-card-title .activity-dot.idle {
+  background: var(--accent-amber);
+  box-shadow: 0 0 6px var(--glow-amber), 0 0 12px var(--glow-amber);
+  animation: idleGlow 3s ease-in-out infinite;
+}
+
+@keyframes activityGlow {
+  0%, 100% {
+    box-shadow: 0 0 6px var(--glow-green), 0 0 12px var(--glow-green);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px var(--glow-green), 0 0 24px var(--glow-green);
+    transform: scale(1.15);
+  }
+}
+
+@keyframes idleGlow {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--glow-amber), 0 0 8px var(--glow-amber);
+  }
+  50% {
+    box-shadow: 0 0 8px var(--glow-amber), 0 0 16px var(--glow-amber);
+  }
+}
+
+.session-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  text-align: center;
+}
+
+.session-card-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+.session-card-badge.working {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.1));
+  color: var(--accent-green);
+  border-color: rgba(52, 211, 153, 0.3);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
+}
+
+.session-card-badge.waiting {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
+  color: var(--accent-amber);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.session-card-path {
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--accent-sapphire-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--glass-border);
+  text-shadow: 0 0 8px rgba(15, 82, 186, 0.3);
+}
+
+.session-card-preview {
+  height: 100px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.5);
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c8d8e8;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  position: relative;
+}
+
+/* Fade out at bottom of preview */
+.session-card-preview::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+
+.session-card-preview:empty::before {
+  content: 'Waiting for output...';
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.session-card-preview .preview-line {
+  margin-bottom: 2px;
+}
+
+.session-card-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.session-card-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  text-shadow: 0 0 6px rgba(240, 168, 48, 0.4);
+}
+
+.session-card-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.card-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+.card-action-btn:hover {
+  background: rgba(0, 255, 106, 0.1);
+  border-color: rgba(0, 255, 106, 0.4);
+  color: var(--accent-emerald);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(0, 255, 106, 0.15),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+.card-action-btn:active {
+  background: linear-gradient(135deg, var(--accent-emerald-dim), var(--accent-emerald));
+  border-color: transparent;
+  color: white;
+  transform: scale(0.92);
+  box-shadow: 0 0 20px var(--glow-emerald);
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+/* Full height only when no sessions */
+#session-cards:empty ~ #no-sessions {
+  flex: 1;
+  min-height: 300px;
+}
+
+.empty-state .empty-icon {
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+/* Waiting for connection - Ruby & Sapphire symmetrical gradient */
+#agent-count {
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: linear-gradient(
+    90deg,
+    var(--accent-ruby) 0%,
+    var(--accent-ruby-light) 20%,
+    var(--accent-sapphire) 50%,
+    var(--accent-ruby-light) 80%,
+    var(--accent-ruby) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 6px var(--glow-ruby)) drop-shadow(0 0 6px var(--glow-sapphire));
+  animation: gemShimmer 4s ease-in-out infinite;
+}
+
+@keyframes gemShimmer {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px var(--glow-ruby)) drop-shadow(0 0 4px var(--glow-sapphire));
+  }
+  50% {
+    filter: drop-shadow(0 0 4px var(--glow-ruby)) drop-shadow(0 0 8px var(--glow-sapphire));
+  }
+}
+
+.empty-state .hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--accent-sapphire-light);
+  text-shadow: 0 0 6px rgba(15, 82, 186, 0.25);
+}
+
+.empty-state code {
+  background: rgba(240, 168, 48, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Menlo', monospace;
+  font-size: 12px;
+  color: var(--accent-amber);
+  border: 1px solid rgba(240, 168, 48, 0.25);
+}
+
+/* Always show the hint section at bottom of dashboard */
+#no-sessions {
+  display: flex;
+  padding: 30px 20px 40px;
+  min-height: auto;
+  height: auto;
+}
+
+/* When there are sessions, make it more subtle */
+#session-cards:not(:empty) ~ #no-sessions {
+  padding: 24px 20px 40px;
+  border-top: 1px solid var(--glass-border);
+  margin-top: 8px;
+}
+
+#session-cards:not(:empty) ~ #no-sessions .empty-icon svg {
+  width: 40px;
+  height: 40px;
+  opacity: 0.25;
+}
+
+#session-cards:not(:empty) ~ #no-sessions p {
+  font-size: 14px;
+}
+
+#session-cards:not(:empty) ~ #no-sessions .hint {
+  font-size: 12px;
+}
+
+/* Ensure focus view is hidden when not active */
+#focus-view:not(.active) {
+  display: none !important;
+}
+
+#split-view:not(.active) {
+  display: none !important;
+}
+
+/* Split View */
+#split-view {
+  padding: 8px;
+}
+
+#split-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  height: 100%;
+}
+
+.split-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.split-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.split-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.split-panel-title .activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.split-panel-title .activity-dot.active {
+  background: var(--accent-green);
+  animation: pulse 1s infinite;
+}
+
+.split-panel-terminal {
+  flex: 1;
+  overflow: hidden;
+}
+
+.split-panel-terminal .xterm {
+  height: 100%;
+  padding: 4px;
+}
+
+.split-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.split-panel-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Focus View */
+#focus-view {
+  flex-direction: column;
+}
+
+#focus-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--shadow-sm);
+}
+
+#back-btn, #expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+#back-btn:hover, #expand-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+#back-btn:active, #expand-btn:active {
+  transform: scale(0.95);
+}
+
+#focus-session-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+#focus-session-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Header control buttons - always visible above keyboard */
+#header-controls {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.header-ctrl-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Menlo', 'Monaco', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.header-ctrl-btn:active {
+  background: linear-gradient(135deg, var(--accent-teal), var(--accent-emerald));
+  border-color: transparent;
+  color: white;
+  transform: scale(0.92);
+  box-shadow: 0 0 16px var(--glow-teal);
+}
+
+.status-badge {
+  font-size: 10px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.1));
+  color: var(--accent-green);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
+}
+
+.status-badge.connected {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.25), rgba(52, 211, 153, 0.1));
+  color: var(--accent-green);
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 16px var(--glow-green);
+}
+
+.status-badge.disconnected {
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.1));
+  color: var(--accent-red);
+  border-color: rgba(248, 113, 113, 0.3);
+  box-shadow: none;
+}
+
+.status-badge.connecting {
+  background: linear-gradient(135deg, rgba(26, 109, 214, 0.2), rgba(26, 109, 214, 0.1));
+  color: var(--accent-sapphire-light);
+  border-color: rgba(26, 109, 214, 0.3);
+  animation: pulse-badge 1.5s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(26, 109, 214, 0.2); }
+  50% { opacity: 0.7; box-shadow: 0 0 16px rgba(26, 109, 214, 0.4); }
+}
+
+/* Loading overlay for session card */
+.session-card.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 106, 0.08), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ============================================
+   PHASE 2: ANIMATIONS & MICRO-INTERACTIONS
+   ============================================ */
+
+/* Card entrance animation - staggered fade in */
+@keyframes cardEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.session-card {
+  animation: cardEntrance 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.session-card:nth-child(1) { animation-delay: 0ms; }
+.session-card:nth-child(2) { animation-delay: 60ms; }
+.session-card:nth-child(3) { animation-delay: 120ms; }
+.session-card:nth-child(4) { animation-delay: 180ms; }
+.session-card:nth-child(5) { animation-delay: 240ms; }
+.session-card:nth-child(6) { animation-delay: 300ms; }
+
+/* Activity ripple - pulses when new data arrives */
+@keyframes activityRipple {
+  0% {
+    box-shadow:
+      var(--shadow-md),
+      0 0 0 0 rgba(52, 211, 153, 0.4),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+  70% {
+    box-shadow:
+      var(--shadow-md),
+      0 0 0 12px rgba(52, 211, 153, 0),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+  100% {
+    box-shadow:
+      var(--shadow-md),
+      0 0 0 0 rgba(52, 211, 153, 0),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+}
+
+.session-card.activity-pulse {
+  animation: activityRipple 0.6s ease-out;
+}
+
+/* View transition animations */
+@keyframes viewFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes viewSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.view.active {
+  animation: viewFadeIn 0.3s ease-out;
+}
+
+#focus-view.active {
+  animation: viewSlideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Refresh button spin */
+@keyframes spinRefresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+#refresh-btn.spinning svg {
+  animation: spinRefresh 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Button spring bounce on press */
+@keyframes buttonSpring {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.88); }
+  70% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+.view-btn:active, #refresh-btn:active, #back-btn:active, #expand-btn:active {
+  animation: buttonSpring 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Header control button flash on press */
+@keyframes ctrlFlash {
+  0% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  50% {
+    transform: scale(0.9);
+    box-shadow: 0 0 24px var(--glow-teal);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+.header-ctrl-btn:active {
+  animation: ctrlFlash 0.2s ease-out;
+}
+
+/* Card action button glow pulse */
+@keyframes actionGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 106, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(0, 255, 106, 0);
+  }
+}
+
+.card-action-btn:active {
+  animation: actionGlow 0.4s ease-out;
+}
+
+/* Status dot heartbeat for idle state */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+}
+
+.session-card-title .activity-dot.idle {
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+/* Subtle floating animation for empty state icon */
+@keyframes floatIcon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.empty-state .empty-icon {
+  animation: floatIcon 3s ease-in-out infinite;
+}
+
+/* Badge working pulse - more prominent */
+@keyframes workingPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
+    border-color: rgba(52, 211, 153, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.5);
+    border-color: rgba(52, 211, 153, 0.6);
+  }
+}
+
+.session-card-badge.working {
+  animation: workingPulse 1.5s ease-in-out infinite;
+}
+
+/* Glow transition smoothing for interactive elements */
+.session-card,
+.view-btn,
+.card-action-btn,
+.header-ctrl-btn,
+#back-btn,
+#expand-btn,
+#keyboard-toggle {
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+#expand-btn {
+  margin-left: auto;
+}
+
+#focus-terminal {
+  flex: 1;
+  overflow: hidden;
+  background: #1a1e24;
+}
+
+#focus-terminal .xterm {
+  height: 100%;
+  padding: 8px;
+}
+
+/* Input Bar - simplified */
+#input-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+#tap-to-type {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+#keyboard-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 40px;
+  background: var(--accent-teal);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 0 10px var(--glow-teal);
+}
+
+#keyboard-toggle:active {
+  background: var(--accent-emerald);
+  transform: scale(0.95);
+  box-shadow: 0 0 16px var(--glow-emerald);
+}
+
+/* Hidden input for iOS keyboard */
+#hidden-input {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  font-size: 16px; /* Prevents iOS zoom */
+  transform: translateY(100%);
+}
+
+/* Fullscreen mode */
+body.fullscreen #header,
+body.fullscreen #view-controls {
+  display: none;
+}
+
+body.fullscreen #focus-header {
+  padding: 4px 8px;
+}
+
+/* Terminal styling overrides */
+.xterm-viewport {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Landscape adjustments */
+@media (orientation: landscape) {
+  #header h1 {
+    font-size: 16px;
+  }
+
+  #view-controls {
+    padding: 6px 12px;
+  }
+
+  .view-btn, #refresh-btn {
+    height: 32px;
+  }
+
+  .session-card-preview {
+    height: 80px;
+  }
+
+  #input-bar {
+    padding: 6px 10px;
+  }
+
+  .ctrl-btn {
+    padding: 8px;
+    font-size: 13px;
+  }
+}
+
+/* Small screen adjustments */
+@media (max-width: 400px) {
+  #session-cards {
+    grid-template-columns: 1fr;
+  }
+
+  #split-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keyboard visible adjustments */
+body.keyboard-visible #input-bar {
+  display: none; /* Hide input bar when keyboard is open - controls are in header */
+}
+
+body.keyboard-visible #focus-terminal {
+  flex: 1;
+}
