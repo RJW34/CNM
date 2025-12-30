@@ -138,8 +138,15 @@ const server = createServer(httpsOptions, (req, res) => {
   const url = new URL(req.url, `https://${req.headers.host}`);
   let pathname = url.pathname;
 
-  // Strip /cnm prefix if present (for Cloudflare routing via walterfam.xyz/cnm)
-  if (pathname.startsWith('/cnm')) {
+  // Handle /cnm prefix for Cloudflare routing via walterfam.xyz/cnm
+  if (pathname === '/cnm') {
+    // Redirect /cnm to /cnm/ so relative paths work correctly
+    const redirectUrl = url.pathname + '/' + url.search;
+    res.writeHead(301, { 'Location': redirectUrl });
+    res.end();
+    return;
+  }
+  if (pathname.startsWith('/cnm/')) {
     pathname = pathname.substring(4) || '/';
   }
 
