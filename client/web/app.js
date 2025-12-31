@@ -253,15 +253,17 @@
             <span class="session-card-time">Started ${ago}${clientInfo}</span>
             <div class="session-card-actions">
               <button class="card-action-btn" data-action="split" title="Add to split view">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="3" y="3" width="8" height="18" rx="1"/>
                   <rect x="13" y="3" width="8" height="18" rx="1"/>
                 </svg>
+                <span>Split</span>
               </button>
-              <button class="card-action-btn" data-action="focus" title="Open in focus mode">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <button class="card-action-btn primary" data-action="focus" title="Open in focus mode">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="3" y="3" width="18" height="18" rx="2"/>
                 </svg>
+                <span>Open</span>
               </button>
             </div>
           </div>
@@ -569,9 +571,20 @@
     }
   }
 
-  // Strip ANSI escape codes
+  // Strip ANSI escape codes (comprehensive)
   function stripAnsi(str) {
-    return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+    return str
+      // CSI sequences (including private modes with ?)
+      .replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '')
+      // OSC sequences (terminated by BEL or ST)
+      .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+      // Other escape sequences
+      .replace(/\x1b[PX^_][^\x1b]*\x1b\\/g, '')
+      .replace(/\x1b[@-Z\\-_]/g, '')
+      // Remaining escape character followed by anything
+      .replace(/\x1b./g, '')
+      // Control characters (except newline, tab)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   }
 
   // Clean preview text for display
@@ -605,11 +618,25 @@
 
   // Format time ago
   function formatTimeAgo(date) {
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const days = Math.floor(seconds / 86400);
+
     if (seconds < 60) return 'just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+    if (minutes < 60) return `${minutes} min ago`;
+    if (hours < 2) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days} days ago`;
+
+    // For older dates, show the actual date
+    const options = { month: 'short', day: 'numeric' };
+    if (date.getFullYear() !== now.getFullYear()) {
+      options.year = 'numeric';
+    }
+    return date.toLocaleDateString('en-US', options);
   }
 
   // Connect to WebSocket server
@@ -715,6 +742,7 @@
     switch (msg.type) {
       case 'sessions':
         availableSessions = msg.sessions || [];
+        sessionCards.classList.remove('loading');
         renderDashboard();
         autoConnectSessions();
         break;
@@ -789,6 +817,8 @@
   // Request session list
   function requestSessions() {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      // Show loading state
+      sessionCards.classList.add('loading');
       ws.send(JSON.stringify({ type: 'list_sessions' }));
     }
   }

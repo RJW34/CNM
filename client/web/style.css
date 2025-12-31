@@ -402,12 +402,12 @@ html, body {
 }
 
 .view-btn.active {
-  background: linear-gradient(135deg, var(--accent-emerald-dim), var(--accent-emerald));
-  border-color: var(--accent-emerald);
-  color: white;
+  background: rgba(45, 139, 87, 0.15);
+  border-color: var(--emerald-500);
+  color: var(--emerald-300);
   box-shadow:
-    0 0 16px var(--glow-emerald),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 0 8px var(--glow-emerald),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 #refresh-btn:hover {
@@ -481,29 +481,43 @@ html, body {
   gap: 12px;
 }
 
-/* Session Card - Glassmorphism with stronger presence */
+/* Loading state for session cards */
+#session-cards.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#session-cards.loading .session-card {
+  animation: cardLoadingPulse 1s ease-in-out infinite;
+}
+
+@keyframes cardLoadingPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+/* Session Card - Glassmorphism with neutral border */
 .session-card {
   position: relative;
   background: rgba(16, 20, 26, 0.92);
   backdrop-filter: blur(var(--blur-amount));
   -webkit-backdrop-filter: blur(var(--blur-amount));
-  border: 1px solid var(--emerald-700);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     var(--shadow-lg),
-    0 0 20px var(--emerald-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .session-card:hover {
-  border-color: var(--emerald-500);
+  border-color: var(--sapphire-600);
   transform: translateY(-4px);
   box-shadow:
     var(--shadow-lg),
-    0 0 24px var(--emerald-glow),
+    0 0 16px var(--sapphire-glow),
     inset 0 1px 0 var(--glass-highlight);
 }
 
@@ -511,10 +525,11 @@ html, body {
   transform: scale(0.98) translateY(-2px);
 }
 
+/* Active session - Ruby glow to indicate activity */
 .session-card.has-activity {
-  border-color: var(--emerald-400);
+  border-color: var(--ruby-600);
   box-shadow:
-    0 0 40px var(--emerald-glow-strong),
+    0 0 24px var(--ruby-glow),
     var(--shadow-lg),
     inset 0 1px 0 var(--glass-highlight);
 }
@@ -692,12 +707,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  gap: 6px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
@@ -705,21 +722,34 @@ html, body {
 }
 
 .card-action-btn:hover {
-  background: rgba(45, 139, 87, 0.15);
-  border-color: var(--emerald-500);
-  color: var(--emerald-300);
+  background: rgba(15, 82, 186, 0.15);
+  border-color: var(--sapphire-500);
+  color: var(--sapphire-300);
   transform: translateY(-2px);
   box-shadow:
-    0 4px 12px var(--emerald-glow),
+    0 4px 12px var(--sapphire-glow),
     inset 0 1px 0 var(--glass-highlight);
 }
 
 .card-action-btn:active {
-  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-400));
+  background: linear-gradient(135deg, var(--sapphire-800), var(--sapphire-400));
   border-color: transparent;
   color: white;
   transform: scale(0.92);
-  box-shadow: 0 0 20px var(--emerald-glow-strong);
+  box-shadow: 0 0 20px var(--sapphire-glow-strong);
+}
+
+/* Primary action button - more prominent */
+.card-action-btn.primary {
+  background: rgba(15, 82, 186, 0.2);
+  border-color: var(--sapphire-600);
+  color: var(--sapphire-300);
+}
+
+.card-action-btn.primary:hover {
+  background: rgba(15, 82, 186, 0.3);
+  border-color: var(--sapphire-400);
+  color: var(--sapphire-200);
 }
 
 /* Empty State */
@@ -1034,6 +1064,8 @@ html, body {
   letter-spacing: 0.5px;
   border: 1px solid var(--emerald-600);
   box-shadow: 0 0 12px var(--emerald-glow);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status-badge.connected {
@@ -1111,19 +1143,19 @@ html, body {
   0% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 0 rgba(45, 139, 87, 0.5),
+      0 0 0 0 rgba(224, 17, 95, 0.5),
       inset 0 1px 0 var(--glass-highlight);
   }
   70% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 12px rgba(45, 139, 87, 0),
+      0 0 0 12px rgba(224, 17, 95, 0),
       inset 0 1px 0 var(--glass-highlight);
   }
   100% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 0 rgba(45, 139, 87, 0),
+      0 0 0 0 rgba(224, 17, 95, 0),
       inset 0 1px 0 var(--glass-highlight);
   }
 }
@@ -1213,10 +1245,10 @@ html, body {
 /* Card action button glow pulse */
 @keyframes actionGlow {
   0% {
-    box-shadow: 0 0 0 0 rgba(45, 139, 87, 0.6);
+    box-shadow: 0 0 0 0 rgba(15, 82, 186, 0.6);
   }
   100% {
-    box-shadow: 0 0 0 8px rgba(45, 139, 87, 0);
+    box-shadow: 0 0 0 8px rgba(15, 82, 186, 0);
   }
 }
 
@@ -1404,25 +1436,33 @@ body.keyboard-visible #focus-terminal {
    FILE UPLOAD UI
    ============================================ */
 
-/* Upload button styling */
-#upload-btn {
-  background: linear-gradient(135deg, var(--emerald-700), var(--emerald-800));
-  border-color: var(--emerald-600);
+/* Upload button styling - distinctive sapphire theme */
+.upload-btn-styled {
+  background: linear-gradient(135deg, var(--sapphire-700), var(--sapphire-800)) !important;
+  border-color: var(--sapphire-500) !important;
+  gap: 4px;
+  padding: 8px 10px !important;
 }
 
-#upload-btn:hover {
-  background: linear-gradient(135deg, var(--emerald-600), var(--emerald-700));
-  box-shadow: 0 0 12px var(--emerald-glow);
+.upload-btn-styled:hover {
+  background: linear-gradient(135deg, var(--sapphire-600), var(--sapphire-700)) !important;
+  box-shadow: 0 0 12px var(--sapphire-glow) !important;
 }
 
-#upload-btn:active {
-  background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
-  box-shadow: 0 0 20px var(--emerald-glow-strong);
+.upload-btn-styled:active {
+  background: linear-gradient(135deg, var(--sapphire-500), var(--sapphire-600)) !important;
+  box-shadow: 0 0 20px var(--sapphire-glow-strong) !important;
 }
 
-#upload-btn svg {
-  width: 16px;
-  height: 16px;
+.upload-btn-styled svg {
+  width: 14px;
+  height: 14px;
+}
+
+.upload-btn-styled .btn-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 /* Upload status toast */
