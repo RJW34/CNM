@@ -40,6 +40,9 @@
   const controlBtns = document.querySelectorAll('.header-ctrl-btn[data-key]');
   const keyboardToggle = document.getElementById('keyboard-toggle');
   const hiddenInput = document.getElementById('hidden-input');
+  const uploadBtn = document.getElementById('upload-btn');
+  const fileInput = document.getElementById('file-input');
+  const uploadStatusEl = document.getElementById('upload-status');
 
   // State
   let ws = null;
@@ -62,6 +65,10 @@
   // Performance: track scrollback loading state
   const loadingScrollback = new Set(); // sessionIds currently loading scrollback
   let dashboardRenderPending = false;
+
+  // Upload state
+  let uploadInProgress = false;
+  let uploadStatusTimeout = null;
 
   // Get token from URL
   function getToken() {
@@ -738,6 +745,17 @@
         }
         break;
 
+      case 'upload_result':
+        uploadInProgress = false;
+        if (msg.success) {
+          showUploadStatus('success', `Uploaded ${msg.filename}`);
+          console.log(`[Upload] Success: ${msg.filename} -> ${msg.path}`);
+        } else {
+          showUploadStatus('error', msg.error || 'Upload failed');
+          console.error('[Upload] Failed:', msg.error);
+        }
+        break;
+
       case 'error':
         console.error('[Server]', msg.message);
         break;
@@ -783,6 +801,97 @@
         rows: focusTerm.rows
       }));
     }
+  }
+
+  // Show upload status toast
+  function showUploadStatus(type, message) {
+    if (!uploadStatusEl) return;
+
+    // Clear any existing timeout
+    if (uploadStatusTimeout) {
+      clearTimeout(uploadStatusTimeout);
+      uploadStatusTimeout = null;
+    }
+
+    uploadStatusEl.textContent = message;
+    uploadStatusEl.className = `upload-status ${type} visible`;
+
+    // Auto-hide success/error after 3 seconds
+    if (type !== 'uploading') {
+      uploadStatusTimeout = setTimeout(() => {
+        uploadStatusEl.classList.remove('visible');
+      }, 3000);
+    }
+  }
+
+  // Hide upload status toast
+  function hideUploadStatus() {
+    if (uploadStatusEl) {
+      uploadStatusEl.classList.remove('visible');
+    }
+    if (uploadStatusTimeout) {
+      clearTimeout(uploadStatusTimeout);
+      uploadStatusTimeout = null;
+    }
+  }
+
+  // Upload a file to the session's working directory
+  function uploadFile(file) {
+    if (!focusedSessionId) {
+      showUploadStatus('error', 'No session connected');
+      return;
+    }
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showUploadStatus('error', 'Not connected to server');
+      return;
+    }
+
+    if (uploadInProgress) {
+      showUploadStatus('error', 'Upload already in progress');
+      return;
+    }
+
+    // Check file size client-side (10MB limit)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const maxMB = Math.round(maxSize / 1024 / 1024);
+      showUploadStatus('error', `File too large (max ${maxMB}MB)`);
+      return;
+    }
+
+    uploadInProgress = true;
+    showUploadStatus('uploading', `Uploading ${file.name}...`);
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        // Extract base64 from data URL (format: "data:mime/type;base64,XXXXX")
+        const dataUrl = reader.result;
+        const base64 = dataUrl.split(',')[1];
+
+        ws.send(JSON.stringify({
+          type: 'upload_file',
+          sessionId: focusedSessionId,
+          filename: file.name,
+          data: base64,
+          size: file.size
+        }));
+      } catch (err) {
+        uploadInProgress = false;
+        showUploadStatus('error', 'Failed to encode file');
+        console.error('[Upload] Encoding error:', err);
+      }
+    };
+
+    reader.onerror = () => {
+      uploadInProgress = false;
+      showUploadStatus('error', 'Failed to read file');
+      console.error('[Upload] Read error:', reader.error);
+    };
+
+    reader.readAsDataURL(file);
   }
 
   // Schedule reconnection
@@ -915,6 +1024,24 @@
 
     // Expand button
     expandBtn.addEventListener('click', toggleFullscreen);
+
+    // Upload button and file input
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          uploadFile(file);
+        }
+        // Reset input to allow selecting the same file again
+        fileInput.value = '';
+      });
+    }
 
     // Control buttons (in header)
     controlBtns.forEach(btn => {

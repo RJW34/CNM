@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createServer } from 'https';
-import { readFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
 import { WebSocketServer } from 'ws';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -86,6 +86,145 @@ function listSessions(includePreview = true) {
 function getSession(sessionId) {
   const sessions = listSessions();
   return sessions.find(s => s.id === sessionId);
+}
+
+// Sanitize filename to prevent path traversal attacks
+function sanitizeFilename(filename) {
+  if (!filename || typeof filename !== 'string') return null;
+
+  // Extract basename only (strip any path components)
+  let name = filename.split(/[/\\]/).pop();
+
+  // Remove reserved characters (Windows + Unix)
+  name = name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
+
+  // Remove leading/trailing dots and spaces
+  name = name.replace(/^[\s.]+|[\s.]+$/g, '');
+
+  // Prevent empty or dot-only names
+  if (!name || name === '.' || name === '..') {
+    return null;
+  }
+
+  // Truncate to 255 chars while preserving extension
+  if (name.length > 255) {
+    const lastDot = name.lastIndexOf('.');
+    const ext = lastDot > 0 ? name.slice(lastDot) : '';
+    name = name.slice(0, 255 - ext.length) + ext;
+  }
+
+  return name;
+}
+
+// Handle file upload from client
+function handleFileUpload(ws, msg, activeSessionId) {
+  const { sessionId, filename, data } = msg;
+  const targetSessionId = sessionId || activeSessionId;
+
+  // Check if uploads are enabled
+  if (!config.UPLOAD_ENABLED) {
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename,
+      error: 'File uploads are disabled'
+    }));
+    return;
+  }
+
+  // Validate session exists and get cwd
+  const session = getSession(targetSessionId);
+  if (!session) {
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename,
+      error: 'Session not found'
+    }));
+    return;
+  }
+
+  // Sanitize filename
+  const safeName = sanitizeFilename(filename);
+  if (!safeName) {
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename,
+      error: 'Invalid filename'
+    }));
+    return;
+  }
+
+  // Decode base64 and validate size
+  let buffer;
+  try {
+    buffer = Buffer.from(data, 'base64');
+  } catch (err) {
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename: safeName,
+      error: 'Invalid file data'
+    }));
+    return;
+  }
+
+  if (buffer.length > config.MAX_UPLOAD_SIZE) {
+    const maxMB = Math.round(config.MAX_UPLOAD_SIZE / 1024 / 1024);
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename: safeName,
+      error: `File exceeds maximum size of ${maxMB}MB`
+    }));
+    return;
+  }
+
+  // Construct destination path
+  const destPath = join(session.cwd, safeName);
+
+  // Security: verify destination is within session cwd
+  const resolvedDest = join(session.cwd, safeName);
+  if (!resolvedDest.startsWith(session.cwd)) {
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename: safeName,
+      error: 'Invalid destination path'
+    }));
+    return;
+  }
+
+  // Write file
+  try {
+    writeFileSync(destPath, buffer);
+    console.log(`[Upload] Saved ${safeName} (${buffer.length} bytes) to ${session.cwd}`);
+
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: true,
+      filename: safeName,
+      path: destPath,
+      size: buffer.length
+    }));
+  } catch (err) {
+    console.error(`[Upload] Failed to save ${safeName}:`, err.message);
+    ws.send(JSON.stringify({
+      type: 'upload_result',
+      sessionId: targetSessionId,
+      success: false,
+      filename: safeName,
+      error: 'Failed to save file: ' + err.message
+    }));
+  }
 }
 
 // Generate a session ID for cookie-based auth
@@ -261,6 +400,11 @@ wss.on('connection', (ws, req) => {
               conn.pipe.write(JSON.stringify(msg) + '\n');
             }
           }
+          break;
+
+        case 'upload_file':
+          // Handle file upload to session's working directory
+          handleFileUpload(ws, msg, activeSessionId);
           break;
 
         default:

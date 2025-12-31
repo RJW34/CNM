@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1a1e24">
   <title>Celio's Network Machine</title>
   <link rel="stylesheet" href="xterm.css">
-  <link rel="stylesheet" href="style.css?v=49">
+  <link rel="stylesheet" href="style.css?v=50">
 </head>
 <body>
   <div id="app">
@@ -88,6 +88,11 @@
         </div>
         <!-- Control buttons in header - always visible -->
         <div id="header-controls">
+          <button class="header-ctrl-btn" id="upload-btn" title="Upload file to session directory">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+            </svg>
+          </button>
           <button class="header-ctrl-btn" data-key="ESC" title="Escape">ESC</button>
           <button class="header-ctrl-btn" data-key="CTRL_C" title="Interrupt">^C</button>
           <button class="header-ctrl-btn" data-key="CTRL_D" title="EOF">^D</button>
@@ -111,12 +116,18 @@
 
     <!-- Hidden input for iOS keyboard -->
     <input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+    <!-- Hidden file input for uploads -->
+    <input type="file" id="file-input" style="display: none;">
+
+    <!-- Upload status toast -->
+    <div id="upload-status" class="upload-status"></div>
   </div>
 
   <script src="xterm.min.js"></script>
   <script src="xterm-addon-fit.min.js"></script>
   <script src="xterm-addon-web-links.min.js"></script>
   <script src="icons.js?v=2"></script>
-  <script src="app.js?v=43"></script>
+  <script src="app.js?v=44"></script>
 </body>
 </html>

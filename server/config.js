@@ -25,5 +25,9 @@ export default {
   CLAUDE_ARGS: [],
 
   // Working directory for Claude Code (null = user home)
-  WORKING_DIR: null
+  WORKING_DIR: null,
+
+  // File upload settings
+  UPLOAD_ENABLED: true,
+  MAX_UPLOAD_SIZE: 10 * 1024 * 1024,  // 10MB max file size
 };
