@@ -55,19 +55,20 @@
 
   /* ============================================
      EMERALD - Life, Success, Action
+     Base: #0B732C (deep forest green)
      ============================================ */
-  --emerald-950: #040a06;
-  --emerald-900: #081810;
-  --emerald-800: #0f2818;
-  --emerald-700: #123a28;
-  --emerald-600: #1a5538;
-  --emerald-500: #247048;
-  --emerald-400: #2D8B57;
-  --emerald-300: #3CA870;
-  --emerald-200: #50c080;
-  --emerald-100: #70e0a0;
-  --emerald-glow: rgba(45, 139, 87, 0.7);
-  --emerald-glow-strong: rgba(45, 139, 87, 0.9);
+  --emerald-950: #010d04;
+  --emerald-900: #021a08;
+  --emerald-800: #042d10;
+  --emerald-700: #064018;
+  --emerald-600: #085520;
+  --emerald-500: #0B732C;
+  --emerald-400: #0E9038;
+  --emerald-300: #12B046;
+  --emerald-200: #20D058;
+  --emerald-100: #50E080;
+  --emerald-glow: rgba(14, 144, 56, 0.7);
+  --emerald-glow-strong: rgba(14, 144, 56, 0.9);
 
   /* Semantic aliases for backward compatibility */
   --accent-emerald: var(--emerald-400);
@@ -110,11 +111,11 @@
     --sapphire-glow: color(display-p3 0.07 0.06 0.88 / 0.65);
     --sapphire-glow-strong: color(display-p3 0.07 0.06 0.88 / 0.9);
 
-    /* Emerald P3 enhanced */
-    --emerald-400: color(display-p3 0.18 0.55 0.35);
-    --emerald-300: color(display-p3 0.24 0.66 0.44);
-    --emerald-glow: color(display-p3 0.18 0.55 0.35 / 0.75);
-    --emerald-glow-strong: color(display-p3 0.18 0.55 0.35 / 0.95);
+    /* Emerald P3 enhanced - based on #0B732C */
+    --emerald-400: color(display-p3 0.055 0.565 0.22);
+    --emerald-300: color(display-p3 0.07 0.69 0.27);
+    --emerald-glow: color(display-p3 0.055 0.565 0.22 / 0.75);
+    --emerald-glow-strong: color(display-p3 0.055 0.565 0.22 / 0.95);
   }
 }
 
@@ -391,7 +392,7 @@ html, body {
 }
 
 .view-btn.active {
-  background: rgba(45, 139, 87, 0.15);
+  background: rgba(14, 144, 56, 0.15);
   border-color: var(--emerald-500);
   color: var(--emerald-300);
   box-shadow:
@@ -604,7 +605,7 @@ html, body {
 }
 
 .session-card-badge.working {
-  background: linear-gradient(135deg, rgba(45, 139, 87, 0.25), rgba(45, 139, 87, 0.1));
+  background: linear-gradient(135deg, rgba(14, 144, 56, 0.25), rgba(14, 144, 56, 0.1));
   color: var(--emerald-300);
   border-color: var(--emerald-600);
   box-shadow: 0 0 12px var(--emerald-glow);
@@ -1168,7 +1169,7 @@ html, body {
   font-size: 10px;
   padding: 5px 12px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(45, 139, 87, 0.2), rgba(45, 139, 87, 0.1));
+  background: linear-gradient(135deg, rgba(14, 144, 56, 0.2), rgba(14, 144, 56, 0.1));
   color: var(--emerald-300);
   font-weight: 600;
   text-transform: uppercase;
@@ -1180,7 +1181,7 @@ html, body {
 }
 
 .status-badge.connected {
-  background: linear-gradient(135deg, rgba(45, 139, 87, 0.25), rgba(45, 139, 87, 0.1));
+  background: linear-gradient(135deg, rgba(14, 144, 56, 0.25), rgba(14, 144, 56, 0.1));
   color: var(--emerald-300);
   border-color: var(--emerald-500);
   box-shadow: 0 0 16px var(--emerald-glow);
@@ -1213,7 +1214,7 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(45, 139, 87, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(14, 144, 56, 0.1), transparent);
   animation: shimmer 1.5s infinite;
 }
 
@@ -1677,7 +1678,7 @@ body.keyboard-visible #focus-terminal {
 }
 
 #folder-btn.active {
-  background: rgba(45, 139, 87, 0.15);
+  background: rgba(14, 144, 56, 0.15);
   border-color: var(--emerald-500);
   color: var(--emerald-300);
   box-shadow: 0 0 8px var(--emerald-glow);
@@ -1850,11 +1851,11 @@ body.keyboard-visible #focus-terminal {
 }
 
 .folder-item:hover {
-  background: rgba(45, 139, 87, 0.1);
+  background: rgba(14, 144, 56, 0.1);
 }
 
 .folder-item:active {
-  background: rgba(45, 139, 87, 0.2);
+  background: rgba(14, 144, 56, 0.2);
 }
 
 .folder-item.has-session {
@@ -1911,7 +1912,7 @@ body.keyboard-visible #focus-terminal {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(45, 139, 87, 0.2);
+  background: rgba(14, 144, 56, 0.2);
   border: 1px solid var(--emerald-600);
   border-radius: 6px;
   color: var(--emerald-300);
