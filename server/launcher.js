@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Session Launcher - Starts Claude Code in a managed PTY with named pipe access
-// Usage: node launcher.js [session-name] [working-directory]
+// Usage: node launcher.js [session-name] [working-directory] [--skip-permissions]
 
 import pty from 'node-pty';
 import net from 'net';
@@ -12,6 +12,7 @@ import config from './config.js';
 // Session configuration
 const sessionId = process.argv[2] || `claude-${Date.now()}`;
 const workingDir = process.argv[3] || process.cwd();
+const skipPermissions = process.argv[4] === '--skip-permissions';
 const registryDir = join(homedir(), '.claude-relay', 'sessions');
 const pipeName = `\\\\.\\pipe\\claude-relay-${sessionId}`;
 const registryFile = join(registryDir, `${sessionId}.json`);
@@ -32,12 +33,21 @@ console.log('══════════════════════�
 console.log(`  Session ID:  ${sessionId}`);
 console.log(`  Working Dir: ${workingDir}`);
 console.log(`  Pipe:        ${pipeName}`);
+if (skipPermissions) {
+  console.log(`  Mode:        --dangerously-skip-permissions`);
+}
 console.log('═══════════════════════════════════════════════════════');
+
+// Build Claude args
+const claudeArgs = [...config.CLAUDE_ARGS];
+if (skipPermissions) {
+  claudeArgs.push('--dangerously-skip-permissions');
+}
 
 // Spawn Claude in PTY
 let ptyProcess;
 try {
-  ptyProcess = pty.spawn(config.CLAUDE_CMD, config.CLAUDE_ARGS, {
+  ptyProcess = pty.spawn(config.CLAUDE_CMD, claudeArgs, {
     name: 'xterm-256color',
     cols: config.PTY_COLS,
     rows: config.PTY_ROWS,

@@ -1,11 +1,12 @@
 import 'dotenv/config';
 import { createServer } from 'https';
-import { readFileSync, existsSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, unlinkSync, writeFileSync, mkdirSync } from 'fs';
 import { WebSocketServer } from 'ws';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { homedir } from 'os';
 import net from 'net';
+import { spawn, execSync } from 'child_process';
 import config from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -227,6 +228,212 @@ function handleFileUpload(ws, msg, activeSessionId) {
   }
 }
 
+// Base directory for new projects
+const PROJECTS_BASE_DIR = join(homedir(), 'Documents', 'Code');
+
+// List folders in Documents\Code
+function listCodeFolders() {
+  try {
+    if (!existsSync(PROJECTS_BASE_DIR)) {
+      return [];
+    }
+
+    const entries = readdirSync(PROJECTS_BASE_DIR, { withFileTypes: true });
+    const activeSessions = listSessions();
+    const activeSessionIds = new Set(activeSessions.map(s => s.id));
+
+    const folders = entries
+      .filter(entry => entry.isDirectory())
+      .filter(entry => !entry.name.startsWith('.')) // Skip hidden folders
+      .map(entry => ({
+        name: entry.name,
+        path: join(PROJECTS_BASE_DIR, entry.name),
+        hasSession: activeSessionIds.has(entry.name)
+      }))
+      .sort((a, b) => {
+        // Sessions with active links first
+        if (a.hasSession && !b.hasSession) return -1;
+        if (!a.hasSession && b.hasSession) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    return folders;
+  } catch (err) {
+    console.error('[Folders] Error listing folders:', err.message);
+    return [];
+  }
+}
+
+// Handle start folder session request
+function handleStartFolderSession(ws, msg) {
+  const { folderName, skipPermissions } = msg;
+
+  // Validate folder name
+  const safeName = sanitizeProjectName(folderName);
+  if (!safeName) {
+    ws.send(JSON.stringify({
+      type: 'start_folder_session_result',
+      success: false,
+      folderName,
+      error: 'Invalid folder name'
+    }));
+    return;
+  }
+
+  // Check if folder exists
+  const folderPath = join(PROJECTS_BASE_DIR, safeName);
+  if (!existsSync(folderPath)) {
+    ws.send(JSON.stringify({
+      type: 'start_folder_session_result',
+      success: false,
+      folderName: safeName,
+      error: 'Folder does not exist'
+    }));
+    return;
+  }
+
+  // Check if session already exists
+  const existingSessions = listSessions();
+  const existing = existingSessions.find(s => s.id === safeName);
+  if (existing) {
+    ws.send(JSON.stringify({
+      type: 'start_folder_session_result',
+      success: true,
+      folderName: safeName,
+      path: folderPath,
+      alreadyRunning: true
+    }));
+    return;
+  }
+
+  // Spawn launcher.js with the session name, directory, and optional skip-permissions
+  const launcherPath = join(__dirname, 'launcher.js');
+  const launcherArgs = [launcherPath, safeName, folderPath];
+  if (skipPermissions) {
+    launcherArgs.push('--skip-permissions');
+  }
+
+  try {
+    // Spawn detached so it survives if relay restarts
+    const child = spawn('node', launcherArgs, {
+      detached: true,
+      stdio: 'ignore',
+      cwd: __dirname
+    });
+
+    // Unref so parent doesn't wait for child
+    child.unref();
+
+    console.log(`[Session] Spawned launcher for ${safeName} (PID: ${child.pid})${skipPermissions ? ' [skip-permissions]' : ''}`);
+
+    ws.send(JSON.stringify({
+      type: 'start_folder_session_result',
+      success: true,
+      folderName: safeName,
+      path: folderPath,
+      skipPermissions: !!skipPermissions
+    }));
+  } catch (err) {
+    console.error(`[Session] Failed to spawn launcher: ${err.message}`);
+    ws.send(JSON.stringify({
+      type: 'start_folder_session_result',
+      success: false,
+      folderName: safeName,
+      error: 'Failed to start Claude session: ' + err.message
+    }));
+  }
+}
+
+// Sanitize project name to prevent path traversal and invalid characters
+function sanitizeProjectName(name) {
+  if (!name || typeof name !== 'string') return null;
+
+  // Only allow alphanumeric, hyphens, underscores
+  let sanitized = name.replace(/[^a-zA-Z0-9_-]/g, '');
+
+  // Must not be empty and have reasonable length
+  if (!sanitized || sanitized.length > 50) return null;
+
+  // Prevent reserved names
+  const reserved = ['con', 'prn', 'aux', 'nul', 'com1', 'lpt1'];
+  if (reserved.includes(sanitized.toLowerCase())) return null;
+
+  return sanitized;
+}
+
+// Handle create session request
+function handleCreateSession(ws, msg) {
+  const { projectName } = msg;
+
+  // Validate project name
+  const safeName = sanitizeProjectName(projectName);
+  if (!safeName) {
+    ws.send(JSON.stringify({
+      type: 'create_session_result',
+      success: false,
+      projectName,
+      error: 'Invalid project name (use only letters, numbers, hyphens, underscores)'
+    }));
+    return;
+  }
+
+  // Create project directory path
+  const projectDir = join(PROJECTS_BASE_DIR, safeName);
+
+  // Check if directory already exists
+  if (existsSync(projectDir)) {
+    // Directory exists - still spawn Claude there, but warn user
+    console.log(`[Session] Directory already exists: ${projectDir}`);
+  } else {
+    // Create the directory
+    try {
+      mkdirSync(projectDir, { recursive: true });
+      console.log(`[Session] Created directory: ${projectDir}`);
+    } catch (err) {
+      console.error(`[Session] Failed to create directory: ${err.message}`);
+      ws.send(JSON.stringify({
+        type: 'create_session_result',
+        success: false,
+        projectName: safeName,
+        error: 'Failed to create project directory: ' + err.message
+      }));
+      return;
+    }
+  }
+
+  // Spawn launcher.js with the session name and directory
+  const launcherPath = join(__dirname, 'launcher.js');
+
+  try {
+    // Spawn detached so it survives if relay restarts
+    const child = spawn('node', [launcherPath, safeName, projectDir], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: __dirname
+    });
+
+    // Unref so parent doesn't wait for child
+    child.unref();
+
+    console.log(`[Session] Spawned launcher for ${safeName} (PID: ${child.pid})`);
+
+    ws.send(JSON.stringify({
+      type: 'create_session_result',
+      success: true,
+      projectName: safeName,
+      path: projectDir
+    }));
+  } catch (err) {
+    console.error(`[Session] Failed to spawn launcher: ${err.message}`);
+    ws.send(JSON.stringify({
+      type: 'create_session_result',
+      success: false,
+      projectName: safeName,
+      error: 'Failed to start Claude session: ' + err.message
+    }));
+  }
+}
+
 // Generate a session ID for cookie-based auth
 import crypto from 'crypto';
 const SESSION_COOKIE_NAME = 'relay_session';
@@ -269,6 +476,84 @@ function validateAuth(req) {
   return { valid: false };
 }
 
+// GitHub webhook secret (optional, for signature verification)
+const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || null;
+
+// Verify GitHub webhook signature
+function verifyGitHubSignature(payload, signature) {
+  if (!WEBHOOK_SECRET) return true; // Skip if no secret configured
+  if (!signature) return false;
+
+  const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
+  const digest = 'sha256=' + hmac.update(payload).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
+}
+
+// Handle GitHub webhook
+function handleGitHubWebhook(req, res) {
+  let body = '';
+
+  req.on('data', chunk => {
+    body += chunk.toString();
+  });
+
+  req.on('end', () => {
+    // Verify signature if secret is configured
+    const signature = req.headers['x-hub-signature-256'];
+    if (WEBHOOK_SECRET && !verifyGitHubSignature(body, signature)) {
+      console.log('[Webhook] Invalid signature');
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid signature' }));
+      return;
+    }
+
+    // Parse payload to check event type
+    let payload;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      return;
+    }
+
+    const event = req.headers['x-github-event'];
+    console.log(`[Webhook] Received ${event} event`);
+
+    // Only pull on push events
+    if (event !== 'push') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: `Ignored ${event} event` }));
+      return;
+    }
+
+    // Execute git pull
+    const repoDir = join(__dirname, '..');
+    try {
+      const output = execSync('git pull origin master', {
+        cwd: repoDir,
+        encoding: 'utf8',
+        timeout: 30000
+      });
+      console.log('[Webhook] Git pull successful:', output.trim());
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Updated successfully',
+        output: output.trim()
+      }));
+    } catch (err) {
+      console.error('[Webhook] Git pull failed:', err.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Git pull failed',
+        message: err.message
+      }));
+    }
+  });
+}
+
 // Create HTTPS server (serves static files for the client)
 const server = createServer(httpsOptions, (req, res) => {
   const clientDir = join(__dirname, '..', 'client', 'web');
@@ -287,6 +572,12 @@ const server = createServer(httpsOptions, (req, res) => {
   }
   if (pathname.startsWith('/cnm/')) {
     pathname = pathname.substring(4) || '/';
+  }
+
+  // GitHub webhook endpoint (no auth required - uses GitHub signature)
+  if (pathname === '/webhook/github' && req.method === 'POST') {
+    handleGitHubWebhook(req, res);
+    return;
   }
 
   // For static files, check auth first
@@ -405,6 +696,22 @@ wss.on('connection', (ws, req) => {
         case 'upload_file':
           // Handle file upload to session's working directory
           handleFileUpload(ws, msg, activeSessionId);
+          break;
+
+        case 'create_session':
+          // Create new project folder and spawn Claude session
+          handleCreateSession(ws, msg);
+          break;
+
+        case 'list_folders':
+          // List folders in Documents\Code
+          const folders = listCodeFolders();
+          ws.send(JSON.stringify({ type: 'folders', folders }));
+          break;
+
+        case 'start_folder_session':
+          // Start Claude session in existing folder
+          handleStartFolderSession(ws, msg);
           break;
 
         default:

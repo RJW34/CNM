@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1a1e24">
   <title>Celio's Network Machine</title>
   <link rel="stylesheet" href="xterm.css">
-  <link rel="stylesheet" href="style.css?v=52">
+  <link rel="stylesheet" href="style.css?v=62">
 </head>
 <body>
   <div id="app">
@@ -46,6 +46,32 @@
           <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
         </svg>
       </button>
+      <button id="folder-btn" title="Browse Folders">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Folder Browser Panel -->
+    <div id="folder-panel" class="panel-overlay">
+      <div class="panel-content">
+        <div class="panel-header">
+          <h3>Browse Folders</h3>
+          <button id="folder-panel-close" class="panel-close">&times;</button>
+        </div>
+        <div class="panel-option">
+          <label class="toggle-label">
+            <input type="checkbox" id="skip-permissions-toggle">
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">Skip Permissions</span>
+          </label>
+          <span class="toggle-hint">Uses --dangerously-skip-permissions</span>
+        </div>
+        <div id="folder-list" class="folder-list">
+          <p class="folder-loading">Loading folders...</p>
+        </div>
+      </div>
     </div>
 
     <!-- Dashboard View (Session Cards) -->
@@ -64,8 +90,24 @@
       </div>
       <div id="session-cards"></div>
       <div id="no-sessions" class="empty-state">
-        <p id="agent-count">Waiting for connection</p>
-        <p class="hint">Start a link with: <code>node launcher.js &lt;name&gt; [dir]</code></p>
+        <p id="agent-count">No Active Links.</p>
+        <p id="empty-hint">Create one below</p>
+      </div>
+      <!-- New Session Creator -->
+      <div id="new-session-panel">
+        <div class="new-session-header">
+          <span class="new-session-title">New Project</span>
+        </div>
+        <div class="new-session-form">
+          <input type="text" id="new-session-name" placeholder="project-name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button id="create-session-btn" title="Create new Claude session">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+            <span>Create</span>
+          </button>
+        </div>
+        <p class="new-session-hint">Creates folder in Documents\Code and starts Claude</p>
       </div>
     </div>
 
@@ -129,6 +171,6 @@
   <script src="xterm-addon-fit.min.js"></script>
   <script src="xterm-addon-web-links.min.js"></script>
   <script src="icons.js?v=2"></script>
-  <script src="app.js?v=46"></script>
+  <script src="app.js?v=52"></script>
 </body>
 </html>

@@ -43,6 +43,13 @@
   const uploadBtn = document.getElementById('upload-btn');
   const fileInput = document.getElementById('file-input');
   const uploadStatusEl = document.getElementById('upload-status');
+  const newSessionName = document.getElementById('new-session-name');
+  const createSessionBtn = document.getElementById('create-session-btn');
+  const folderBtn = document.getElementById('folder-btn');
+  const folderPanel = document.getElementById('folder-panel');
+  const folderPanelClose = document.getElementById('folder-panel-close');
+  const folderList = document.getElementById('folder-list');
+  const skipPermissionsToggle = document.getElementById('skip-permissions-toggle');
 
   // State
   let ws = null;
@@ -70,6 +77,13 @@
   let uploadInProgress = false;
   let uploadStatusTimeout = null;
 
+  // Create session state
+  let createSessionPending = false;
+
+  // Folder browser state
+  let availableFolders = [];
+  let folderSessionPending = false;
+
   // Get token from URL
   function getToken() {
     const params = new URLSearchParams(window.location.search);
@@ -90,7 +104,8 @@
   // Update connection status UI
   function setConnectionStatus(status, text) {
     // Toggle connected class on container to light up gems
-    if (status === 'connected') {
+    // 'connected' = full connected, 'refreshing' = keep connected but show text, '' = disconnected
+    if (status === 'connected' || status === 'refreshing') {
       connectionStatus.classList.add('connected');
     } else {
       connectionStatus.classList.remove('connected');
@@ -181,13 +196,17 @@
   function renderDashboard() {
     // Update link count text
     const agentCountEl = document.getElementById('agent-count');
+    const emptyHintEl = document.getElementById('empty-hint');
     if (agentCountEl) {
       if (availableSessions.length === 0) {
-        agentCountEl.textContent = 'Waiting for connection';
+        agentCountEl.textContent = 'No Active Links.';
+        if (emptyHintEl) emptyHintEl.style.display = '';
       } else if (availableSessions.length === 1) {
         agentCountEl.textContent = '1 active link';
+        if (emptyHintEl) emptyHintEl.style.display = 'none';
       } else {
         agentCountEl.textContent = `${availableSessions.length} active links`;
+        if (emptyHintEl) emptyHintEl.style.display = 'none';
       }
     }
 
@@ -743,6 +762,7 @@
       case 'sessions':
         availableSessions = msg.sessions || [];
         sessionCards.classList.remove('loading');
+        setConnectionStatus('connected', 'Connected');
         renderDashboard();
         autoConnectSessions();
         break;
@@ -799,6 +819,45 @@
         }
         break;
 
+      case 'create_session_result':
+        createSessionPending = false;
+        if (createSessionBtn) createSessionBtn.disabled = false;
+
+        if (msg.success) {
+          showUploadStatus('success', `Created ${msg.projectName}`);
+          console.log(`[Session] Created: ${msg.projectName} at ${msg.path}`);
+          // Clear input and refresh sessions
+          if (newSessionName) newSessionName.value = '';
+          requestSessions();
+        } else {
+          showUploadStatus('error', msg.error || 'Failed to create session');
+          console.error('[Session] Creation failed:', msg.error);
+        }
+        break;
+
+      case 'folders':
+        availableFolders = msg.folders || [];
+        renderFolderList();
+        break;
+
+      case 'start_folder_session_result':
+        folderSessionPending = false;
+        if (msg.success) {
+          if (msg.alreadyRunning) {
+            showUploadStatus('success', `${msg.folderName} already running`);
+          } else {
+            showUploadStatus('success', `Started ${msg.folderName}`);
+          }
+          console.log(`[Folder] Session started: ${msg.folderName}`);
+          // Close panel and refresh
+          closeFolderPanel();
+          requestSessions();
+        } else {
+          showUploadStatus('error', msg.error || 'Failed to start session');
+          console.error('[Folder] Start failed:', msg.error);
+        }
+        break;
+
       case 'error':
         console.error('[Server]', msg.message);
         break;
@@ -819,6 +878,7 @@
     if (ws && ws.readyState === WebSocket.OPEN) {
       // Show loading state
       sessionCards.classList.add('loading');
+      setConnectionStatus('refreshing', 'Refreshing');
       ws.send(JSON.stringify({ type: 'list_sessions' }));
     }
   }
@@ -937,6 +997,148 @@
     };
 
     reader.readAsDataURL(file);
+  }
+
+  // Create a new session
+  function createNewSession() {
+    if (!newSessionName) return;
+
+    const projectName = newSessionName.value.trim();
+
+    // Validate project name
+    if (!projectName) {
+      showUploadStatus('error', 'Enter a project name');
+      newSessionName.focus();
+      return;
+    }
+
+    // Basic sanitization check (server will do full validation)
+    if (!/^[a-zA-Z0-9_-]+$/.test(projectName)) {
+      showUploadStatus('error', 'Use only letters, numbers, - and _');
+      newSessionName.focus();
+      return;
+    }
+
+    if (projectName.length > 50) {
+      showUploadStatus('error', 'Name too long (max 50 chars)');
+      newSessionName.focus();
+      return;
+    }
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showUploadStatus('error', 'Not connected to server');
+      return;
+    }
+
+    if (createSessionPending) {
+      showUploadStatus('error', 'Session creation in progress');
+      return;
+    }
+
+    createSessionPending = true;
+    createSessionBtn.disabled = true;
+    showUploadStatus('uploading', `Creating ${projectName}...`);
+
+    ws.send(JSON.stringify({
+      type: 'create_session',
+      projectName
+    }));
+  }
+
+  // Open folder panel
+  function openFolderPanel() {
+    if (folderPanel) {
+      folderPanel.classList.add('visible');
+      folderBtn.classList.add('active');
+      requestFolders();
+    }
+  }
+
+  // Close folder panel
+  function closeFolderPanel() {
+    if (folderPanel) {
+      folderPanel.classList.remove('visible');
+      folderBtn.classList.remove('active');
+    }
+  }
+
+  // Request folder list from server
+  function requestFolders() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      folderList.innerHTML = '<p class="folder-loading">Loading folders...</p>';
+      ws.send(JSON.stringify({ type: 'list_folders' }));
+    }
+  }
+
+  // Render folder list
+  function renderFolderList() {
+    if (!folderList) return;
+
+    if (availableFolders.length === 0) {
+      folderList.innerHTML = `
+        <div class="folder-empty">
+          <p>No folders found</p>
+          <p class="hint">Create folders in Documents\\Code</p>
+        </div>
+      `;
+      return;
+    }
+
+    folderList.innerHTML = availableFolders.map(folder => {
+      const statusText = folder.hasSession ? 'Session active' : 'Click to start';
+      const hasSessionClass = folder.hasSession ? 'has-session' : '';
+
+      return `
+        <div class="folder-item ${hasSessionClass}" data-folder="${escapeHtml(folder.name)}">
+          <div class="folder-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+          </div>
+          <div class="folder-info">
+            <div class="folder-name">${escapeHtml(folder.name)}</div>
+            <div class="folder-status">${statusText}</div>
+          </div>
+          <div class="folder-action">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Add click handlers
+    folderList.querySelectorAll('.folder-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const folderName = item.dataset.folder;
+        startFolderSession(folderName);
+      });
+    });
+  }
+
+  // Start a session in a folder
+  function startFolderSession(folderName) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showUploadStatus('error', 'Not connected to server');
+      return;
+    }
+
+    if (folderSessionPending) {
+      showUploadStatus('error', 'Session start in progress');
+      return;
+    }
+
+    folderSessionPending = true;
+    const skipPermissions = skipPermissionsToggle ? skipPermissionsToggle.checked : false;
+
+    showUploadStatus('uploading', `Starting ${folderName}...`);
+
+    ws.send(JSON.stringify({
+      type: 'start_folder_session',
+      folderName,
+      skipPermissions
+    }));
   }
 
   // Schedule reconnection
@@ -1062,6 +1264,31 @@
       setTimeout(() => refreshBtn.classList.remove('spinning'), 800);
     });
 
+    // Folder button
+    if (folderBtn) {
+      folderBtn.addEventListener('click', () => {
+        if (folderPanel.classList.contains('visible')) {
+          closeFolderPanel();
+        } else {
+          openFolderPanel();
+        }
+      });
+    }
+
+    // Folder panel close button
+    if (folderPanelClose) {
+      folderPanelClose.addEventListener('click', closeFolderPanel);
+    }
+
+    // Close folder panel when clicking outside
+    if (folderPanel) {
+      folderPanel.addEventListener('click', (e) => {
+        if (e.target === folderPanel) {
+          closeFolderPanel();
+        }
+      });
+    }
+
     // Back button
     backBtn.addEventListener('click', () => {
       switchView('dashboard');
@@ -1114,6 +1341,20 @@
       if (e.target === keyboardToggle || e.target.closest('#keyboard-toggle')) return;
       showKeyboard();
     });
+
+    // Create new session
+    if (createSessionBtn && newSessionName) {
+      createSessionBtn.addEventListener('click', () => {
+        createNewSession();
+      });
+
+      newSessionName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          createNewSession();
+        }
+      });
+    }
 
     // Window resize
     window.addEventListener('resize', () => {
@@ -1181,7 +1422,7 @@
       if (pullDistance > 0 && dashboard.scrollTop === 0) {
         // Show pull indicator proportionally
         const progress = Math.min(pullDistance / threshold, 1);
-        pullRefresh.style.height = `${Math.min(pullDistance * 0.6, 70)}px`;
+        pullRefresh.style.height = `${Math.min(pullDistance * 0.6, 56)}px`;
         pullRefresh.style.opacity = progress;
 
         if (pullDistance > threshold) {

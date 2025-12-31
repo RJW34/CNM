@@ -21,35 +21,37 @@
 
   /* ============================================
      RUBY - Passion, Energy, Alerts
+     Base: #850101 (deep blood red)
      ============================================ */
-  --ruby-950: #1a0208;
-  --ruby-900: #2a0312;
-  --ruby-800: #3d0a20;
-  --ruby-700: #5a0625;
-  --ruby-600: #8a0a38;
-  --ruby-500: #b00d4a;
-  --ruby-400: #e0115f;
-  --ruby-300: #ff3080;
-  --ruby-200: #ff6099;
-  --ruby-100: #ff99bb;
-  --ruby-glow: rgba(224, 17, 95, 0.65);
-  --ruby-glow-strong: rgba(224, 17, 95, 0.85);
+  --ruby-950: #0d0000;
+  --ruby-900: #1a0000;
+  --ruby-800: #300000;
+  --ruby-700: #4a0000;
+  --ruby-600: #650000;
+  --ruby-500: #850101;
+  --ruby-400: #a50202;
+  --ruby-300: #c50505;
+  --ruby-200: #e51515;
+  --ruby-100: #ff4040;
+  --ruby-glow: rgba(165, 2, 2, 0.65);
+  --ruby-glow-strong: rgba(165, 2, 2, 0.85);
 
   /* ============================================
      SAPPHIRE - Depth, Trust, Information
+     Base: #040273 (deep indigo blue)
      ============================================ */
-  --sapphire-950: #040810;
-  --sapphire-900: #060c20;
-  --sapphire-800: #0a1838;
-  --sapphire-700: #082868;
-  --sapphire-600: #0a3580;
-  --sapphire-500: #0c4298;
-  --sapphire-400: #0F52BA;
-  --sapphire-300: #3070DD;
-  --sapphire-200: #5090f0;
-  --sapphire-100: #80b0ff;
-  --sapphire-glow: rgba(15, 82, 186, 0.6);
-  --sapphire-glow-strong: rgba(15, 82, 186, 0.85);
+  --sapphire-950: #010012;
+  --sapphire-900: #020028;
+  --sapphire-800: #030045;
+  --sapphire-700: #040273;
+  --sapphire-600: #0503a0;
+  --sapphire-500: #0805c0;
+  --sapphire-400: #1210e0;
+  --sapphire-300: #3535ff;
+  --sapphire-200: #6565ff;
+  --sapphire-100: #9595ff;
+  --sapphire-glow: rgba(18, 16, 224, 0.6);
+  --sapphire-glow-strong: rgba(18, 16, 224, 0.85);
 
   /* ============================================
      EMERALD - Life, Success, Action
@@ -96,17 +98,17 @@
 /* Display P3 wide gamut colors for modern iPhones */
 @media (color-gamut: p3) {
   :root {
-    /* Ruby P3 enhanced */
-    --ruby-400: color(display-p3 0.90 0.08 0.40);
-    --ruby-300: color(display-p3 1.0 0.20 0.52);
-    --ruby-glow: color(display-p3 0.90 0.08 0.40 / 0.7);
-    --ruby-glow-strong: color(display-p3 0.90 0.08 0.40 / 0.9);
+    /* Ruby P3 enhanced - based on #850101 */
+    --ruby-400: color(display-p3 0.65 0.01 0.01);
+    --ruby-300: color(display-p3 0.77 0.02 0.02);
+    --ruby-glow: color(display-p3 0.65 0.01 0.01 / 0.7);
+    --ruby-glow-strong: color(display-p3 0.65 0.01 0.01 / 0.9);
 
-    /* Sapphire P3 enhanced */
-    --sapphire-400: color(display-p3 0.08 0.34 0.76);
-    --sapphire-300: color(display-p3 0.20 0.46 0.88);
-    --sapphire-glow: color(display-p3 0.08 0.34 0.76 / 0.65);
-    --sapphire-glow-strong: color(display-p3 0.08 0.34 0.76 / 0.9);
+    /* Sapphire P3 enhanced - based on #040273 */
+    --sapphire-400: color(display-p3 0.07 0.06 0.88);
+    --sapphire-300: color(display-p3 0.21 0.21 1.0);
+    --sapphire-glow: color(display-p3 0.07 0.06 0.88 / 0.65);
+    --sapphire-glow-strong: color(display-p3 0.07 0.06 0.88 / 0.9);
 
     /* Emerald P3 enhanced */
     --emerald-400: color(display-p3 0.18 0.55 0.35);
@@ -200,15 +202,15 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 16px 0 12px;
+  padding: 8px 0 12px;
   margin-bottom: 8px;
 }
 
 /* Status text - larger, centered */
 .status-text {
-  width: 120px;
+  min-width: 140px;
   text-align: center;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -218,10 +220,10 @@ html, body {
   opacity: 0.5;
 }
 
-/* Status gems - hexagonal cut, larger */
+/* Status gems - hexagonal cut */
 .status-gem {
   width: 20px;
-  height: 40px;
+  height: 37px;
   clip-path: polygon(
     50% 0%,
     100% 15%,
@@ -263,48 +265,27 @@ html, body {
   animation: textGlow 2s ease-in-out infinite;
 }
 
-/* Connected state - brilliant backlit gems */
+/* Connected state - backlit LED indicator style */
 #connection-status.connected .status-gem.gem-ruby {
-  background:
-    linear-gradient(165deg,
-      #ff4080 0%,
-      #e02060 25%,
-      #c01850 50%,
-      #a01040 75%,
-      #801030 100%);
+  background: #850101;
   box-shadow:
-    /* Inner highlight - hot core */
-    inset 0 0 8px rgba(255, 200, 200, 0.6),
-    inset 1px 1px 3px rgba(255, 255, 255, 0.3),
-    /* Outer glow layers - backlit effect */
-    0 0 10px 2px rgba(255, 64, 128, 0.9),
-    0 0 20px 6px rgba(224, 17, 95, 0.7),
-    0 0 35px 10px rgba(224, 17, 95, 0.4),
-    0 0 50px 15px rgba(224, 17, 95, 0.2);
+    /* Soft LED backlight bleeding out from behind */
+    0 0 8px 2px rgba(165, 2, 2, 0.9),
+    0 0 20px 6px rgba(133, 1, 1, 0.6),
+    0 0 35px 12px rgba(101, 0, 0, 0.35),
+    0 0 50px 18px rgba(74, 0, 0, 0.15);
   opacity: 1;
-  animation: gemPulseRuby 2s ease-in-out infinite;
 }
 
 #connection-status.connected .status-gem.gem-sapphire {
-  background:
-    linear-gradient(165deg,
-      #60a0ff 0%,
-      #4080e0 25%,
-      #3060c0 50%,
-      #2050a0 75%,
-      #104080 100%);
+  background: #040273;
   box-shadow:
-    /* Inner highlight - hot core */
-    inset 0 0 8px rgba(200, 220, 255, 0.6),
-    inset 1px 1px 3px rgba(255, 255, 255, 0.3),
-    /* Outer glow layers - backlit effect */
-    0 0 10px 2px rgba(96, 160, 255, 0.9),
-    0 0 20px 6px rgba(15, 82, 186, 0.7),
-    0 0 35px 10px rgba(15, 82, 186, 0.4),
-    0 0 50px 15px rgba(15, 82, 186, 0.2);
+    /* Soft LED backlight bleeding out from behind */
+    0 0 8px 2px rgba(18, 16, 224, 0.9),
+    0 0 20px 6px rgba(8, 5, 192, 0.6),
+    0 0 35px 12px rgba(5, 3, 160, 0.35),
+    0 0 50px 18px rgba(4, 2, 115, 0.15);
   opacity: 1;
-  animation: gemPulseSapphire 2s ease-in-out infinite;
-  animation-delay: 1s;
 }
 
 @keyframes textGlow {
@@ -324,42 +305,50 @@ html, body {
 @keyframes gemPulseRuby {
   0%, 100% {
     box-shadow:
-      inset 0 0 6px rgba(255, 200, 200, 0.5),
-      inset 1px 1px 2px rgba(255, 255, 255, 0.2),
-      0 0 8px 2px rgba(255, 64, 128, 0.8),
-      0 0 18px 5px rgba(224, 17, 95, 0.6),
-      0 0 30px 8px rgba(224, 17, 95, 0.3),
-      0 0 45px 12px rgba(224, 17, 95, 0.15);
+      inset 0 0 10px rgba(255, 255, 255, 0.8),
+      inset 0 -4px 8px rgba(229, 21, 21, 0.7),
+      0 0 12px 3px rgba(229, 21, 21, 0.95),
+      0 0 25px 8px rgba(197, 5, 5, 0.8),
+      0 0 45px 15px rgba(165, 2, 2, 0.6),
+      0 0 65px 22px rgba(133, 1, 1, 0.35),
+      0 0 90px 30px rgba(101, 0, 0, 0.15);
+    filter: brightness(1.05);
   }
   50% {
     box-shadow:
-      inset 0 0 10px rgba(255, 200, 200, 0.7),
-      inset 1px 1px 3px rgba(255, 255, 255, 0.4),
-      0 0 12px 3px rgba(255, 64, 128, 1),
-      0 0 25px 8px rgba(224, 17, 95, 0.8),
-      0 0 40px 12px rgba(224, 17, 95, 0.5),
-      0 0 60px 18px rgba(224, 17, 95, 0.25);
+      inset 0 0 15px rgba(255, 255, 255, 1),
+      inset 0 -4px 10px rgba(229, 21, 21, 0.9),
+      0 0 18px 5px rgba(229, 21, 21, 1),
+      0 0 35px 12px rgba(197, 5, 5, 0.95),
+      0 0 60px 20px rgba(165, 2, 2, 0.75),
+      0 0 85px 28px rgba(133, 1, 1, 0.45),
+      0 0 120px 40px rgba(101, 0, 0, 0.2);
+    filter: brightness(1.2);
   }
 }
 
 @keyframes gemPulseSapphire {
   0%, 100% {
     box-shadow:
-      inset 0 0 6px rgba(200, 220, 255, 0.5),
-      inset 1px 1px 2px rgba(255, 255, 255, 0.2),
-      0 0 8px 2px rgba(96, 160, 255, 0.8),
-      0 0 18px 5px rgba(15, 82, 186, 0.6),
-      0 0 30px 8px rgba(15, 82, 186, 0.3),
-      0 0 45px 12px rgba(15, 82, 186, 0.15);
+      inset 0 0 10px rgba(255, 255, 255, 0.8),
+      inset 0 -4px 8px rgba(101, 101, 255, 0.7),
+      0 0 12px 3px rgba(101, 101, 255, 0.95),
+      0 0 25px 8px rgba(53, 53, 255, 0.8),
+      0 0 45px 15px rgba(18, 16, 224, 0.6),
+      0 0 65px 22px rgba(8, 5, 192, 0.35),
+      0 0 90px 30px rgba(4, 2, 115, 0.15);
+    filter: brightness(1.05);
   }
   50% {
     box-shadow:
-      inset 0 0 10px rgba(200, 220, 255, 0.7),
-      inset 1px 1px 3px rgba(255, 255, 255, 0.4),
-      0 0 12px 3px rgba(96, 160, 255, 1),
-      0 0 25px 8px rgba(15, 82, 186, 0.8),
-      0 0 40px 12px rgba(15, 82, 186, 0.5),
-      0 0 60px 18px rgba(15, 82, 186, 0.25);
+      inset 0 0 15px rgba(255, 255, 255, 1),
+      inset 0 -4px 10px rgba(101, 101, 255, 0.9),
+      0 0 18px 5px rgba(101, 101, 255, 1),
+      0 0 35px 12px rgba(53, 53, 255, 0.95),
+      0 0 60px 20px rgba(18, 16, 224, 0.75),
+      0 0 85px 28px rgba(8, 5, 192, 0.45),
+      0 0 120px 40px rgba(4, 2, 115, 0.2);
+    filter: brightness(1.2);
   }
 }
 
@@ -441,18 +430,19 @@ html, body {
   justify-content: center;
   align-items: center;
   height: 0;
-  overflow: hidden;
+  overflow: visible;
   transition: height 0.2s ease, opacity 0.2s ease;
   opacity: 0;
+  padding: 8px 0;
 }
 
 #pull-refresh.pulling {
-  height: 60px;
+  height: 56px;
   opacity: 1;
 }
 
 #pull-refresh.refreshing {
-  height: 60px;
+  height: 56px;
   opacity: 1;
 }
 
@@ -773,7 +763,7 @@ html, body {
   font-size: 16px;
 }
 
-/* Waiting for connection - Light grey fill with Ruby & Sapphire gradient stroke */
+/* Empty state - "No Active Links" with Ruby & Sapphire gradient stroke */
 #agent-count {
   font-weight: 700;
   font-size: 18px;
@@ -796,6 +786,54 @@ html, body {
     0 0 8px var(--glow-ruby),
     0 0 8px var(--glow-sapphire);
   animation: gemShimmer 4s ease-in-out infinite;
+}
+
+/* Hint text below "No Active Links" */
+#empty-hint {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-top: 16px;
+  animation: hintBounce 2s ease-in-out infinite;
+  position: relative;
+  padding-top: 12px;
+}
+
+#empty-hint::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--text-muted);
+  animation: arrowBounce 2s ease-in-out infinite;
+}
+
+@keyframes hintBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+}
+
+@keyframes arrowBounce {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(-50%) translateY(4px);
+    opacity: 1;
+  }
 }
 
 @keyframes gemShimmer {
@@ -827,29 +865,102 @@ html, body {
   }
 }
 
-.empty-state .hint {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--accent-sapphire-light);
-  text-shadow: 0 0 6px rgba(15, 82, 186, 0.25);
-}
-
-.empty-state code {
-  background: rgba(15, 82, 186, 0.15);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-family: 'Menlo', monospace;
-  font-size: 12px;
-  color: var(--sapphire-200);
-  border: 1px solid var(--sapphire-700);
-}
-
 /* Always show the hint section at bottom of dashboard */
 #no-sessions {
   display: flex;
-  padding: 30px 20px 40px;
+  padding: 20px 20px 10px;
   min-height: auto;
   height: auto;
+}
+
+/* New Session Panel */
+#new-session-panel {
+  margin: 0 12px 20px;
+  padding: 16px;
+  background: rgba(16, 20, 26, 0.8);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.new-session-header {
+  margin-bottom: 12px;
+}
+
+.new-session-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.new-session-form {
+  display: flex;
+  gap: 8px;
+}
+
+#new-session-name {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: 'Menlo', 'Monaco', monospace;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#new-session-name::placeholder {
+  color: var(--text-muted);
+}
+
+#new-session-name:focus {
+  border-color: var(--sapphire-500);
+  box-shadow: 0 0 12px var(--sapphire-glow);
+}
+
+#create-session-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--ruby-700), var(--ruby-800));
+  border: 1px solid var(--ruby-600);
+  border-radius: 8px;
+  color: var(--ruby-100);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+#create-session-btn:hover {
+  background: linear-gradient(135deg, var(--ruby-600), var(--ruby-700));
+  box-shadow: 0 0 16px var(--ruby-glow);
+  transform: translateY(-1px);
+}
+
+#create-session-btn:active {
+  background: linear-gradient(135deg, var(--ruby-500), var(--ruby-600));
+  transform: scale(0.96);
+  box-shadow: 0 0 24px var(--ruby-glow-strong);
+}
+
+#create-session-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.new-session-hint {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* When there are sessions, make it more subtle */
@@ -1076,7 +1187,7 @@ html, body {
 }
 
 .status-badge.disconnected {
-  background: linear-gradient(135deg, rgba(224, 17, 95, 0.2), rgba(224, 17, 95, 0.1));
+  background: linear-gradient(135deg, rgba(165, 2, 2, 0.2), rgba(165, 2, 2, 0.1));
   color: var(--ruby-300);
   border-color: var(--ruby-600);
   box-shadow: none;
@@ -1143,19 +1254,19 @@ html, body {
   0% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 0 rgba(224, 17, 95, 0.5),
+      0 0 0 0 rgba(165, 2, 2, 0.5),
       inset 0 1px 0 var(--glass-highlight);
   }
   70% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 12px rgba(224, 17, 95, 0),
+      0 0 0 12px rgba(165, 2, 2, 0),
       inset 0 1px 0 var(--glass-highlight);
   }
   100% {
     box-shadow:
       var(--shadow-md),
-      0 0 0 0 rgba(224, 17, 95, 0),
+      0 0 0 0 rgba(165, 2, 2, 0),
       inset 0 1px 0 var(--glass-highlight);
   }
 }
@@ -1534,4 +1645,310 @@ body.keyboard-visible #focus-terminal {
   color: var(--ruby-200);
   border: 1px solid var(--ruby-600);
   box-shadow: var(--shadow-lg), 0 0 20px var(--ruby-glow);
+}
+
+/* ============================================
+   FOLDER BROWSER PANEL
+   ============================================ */
+
+#folder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+#folder-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--emerald-300);
+  box-shadow: 0 0 12px var(--emerald-glow);
+}
+
+#folder-btn:active {
+  transform: scale(0.95);
+}
+
+#folder-btn.active {
+  background: rgba(45, 139, 87, 0.15);
+  border-color: var(--emerald-500);
+  color: var(--emerald-300);
+  box-shadow: 0 0 8px var(--emerald-glow);
+}
+
+/* Panel Overlay */
+.panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.panel-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.panel-content {
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-overlay.visible .panel-content {
+  transform: translateY(0);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.panel-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.panel-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.panel-close:hover {
+  background: rgba(165, 2, 2, 0.2);
+  border-color: var(--ruby-600);
+  color: var(--ruby-300);
+}
+
+/* Toggle Option */
+.panel-option {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.toggle-label input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 44px;
+  height: 24px;
+  background: var(--ruby-800);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: transform 0.3s, background 0.3s;
+}
+
+.toggle-label input:checked + .toggle-slider {
+  background: var(--ruby-600);
+  box-shadow: 0 0 12px var(--ruby-glow);
+}
+
+.toggle-label input:checked + .toggle-slider::after {
+  transform: translateX(20px);
+  background: var(--ruby-200);
+}
+
+.toggle-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.toggle-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  margin-left: 56px;
+}
+
+/* Folder List */
+.folder-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.folder-loading {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.folder-item:hover {
+  background: rgba(45, 139, 87, 0.1);
+}
+
+.folder-item:active {
+  background: rgba(45, 139, 87, 0.2);
+}
+
+.folder-item.has-session {
+  background: rgba(18, 16, 224, 0.1);
+}
+
+.folder-item.has-session:hover {
+  background: rgba(18, 16, 224, 0.15);
+}
+
+.folder-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  color: var(--emerald-400);
+  flex-shrink: 0;
+}
+
+.folder-item.has-session .folder-icon {
+  color: var(--sapphire-400);
+}
+
+.folder-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.folder-item.has-session .folder-status {
+  color: var(--sapphire-300);
+}
+
+.folder-action {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 139, 87, 0.2);
+  border: 1px solid var(--emerald-600);
+  border-radius: 6px;
+  color: var(--emerald-300);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.folder-item:hover .folder-action {
+  background: var(--emerald-600);
+  color: white;
+  box-shadow: 0 0 10px var(--emerald-glow);
+}
+
+.folder-item.has-session .folder-action {
+  background: rgba(18, 16, 224, 0.2);
+  border-color: var(--sapphire-600);
+  color: var(--sapphire-300);
+}
+
+.folder-item.has-session:hover .folder-action {
+  background: var(--sapphire-600);
+  color: white;
+  box-shadow: 0 0 10px var(--sapphire-glow);
+}
+
+.folder-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.folder-empty p {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.folder-empty .hint {
+  font-size: 12px;
+  opacity: 0.7;
 }
