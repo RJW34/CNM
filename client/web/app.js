@@ -335,13 +335,28 @@
       updateFocusStatus(sessionState?.connected ? 'connected' : 'connecting');
     }
 
+    // Skip animation if returning to same session
+    if (isReturningToSameSession) {
+      focusView.classList.add('no-animate');
+    } else {
+      focusView.classList.remove('no-animate');
+    }
+
     // Switch to focus view
     switchView('focus');
 
-    setTimeout(() => {
-      focusFitAddon.fit();
-      sendResize();
-    }, 100);
+    // Only fit terminal if needed (not when returning to same session with stable size)
+    if (!isReturningToSameSession) {
+      setTimeout(() => {
+        focusFitAddon.fit();
+        sendResize();
+      }, 100);
+    } else {
+      // Just ensure terminal is focused without resize jitter
+      setTimeout(() => {
+        if (focusTerm) focusTerm.focus();
+      }, 50);
+    }
   }
 
   // Update focus view status

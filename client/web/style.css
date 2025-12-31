@@ -234,24 +234,23 @@ html, body {
   position: relative;
 }
 
+/* Disconnected state - nearly invisible, dark void */
 .status-gem.gem-ruby {
   background:
-    linear-gradient(165deg, #1a0608 0%, #140405 40%, #100304 70%, #0a0202 100%);
+    linear-gradient(165deg, #0a0203 0%, #060102 40%, #030101 70%, #010000 100%);
   box-shadow:
-    inset 1px 1px 1px rgba(255, 80, 80, 0.05),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.8),
-    0 1px 2px rgba(0, 0, 0, 0.6);
-  opacity: 0.4;
+    inset 1px 1px 1px rgba(255, 80, 80, 0.02),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.9);
+  opacity: 0.2;
 }
 
 .status-gem.gem-sapphire {
   background:
-    linear-gradient(165deg, #080c14 0%, #06080c 40%, #040608 70%, #020304 100%);
+    linear-gradient(165deg, #030408 0%, #020204 40%, #010102 70%, #000001 100%);
   box-shadow:
-    inset 1px 1px 1px rgba(80, 120, 255, 0.05),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.8),
-    0 1px 2px rgba(0, 0, 0, 0.6);
-  opacity: 0.4;
+    inset 1px 1px 1px rgba(80, 120, 255, 0.02),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.9);
+  opacity: 0.2;
 }
 
 /* Connected state - everything lights up */
@@ -264,26 +263,45 @@ html, body {
   animation: textGlow 2s ease-in-out infinite;
 }
 
+/* Connected state - brilliant backlit gems */
 #connection-status.connected .status-gem.gem-ruby {
   background:
-    linear-gradient(165deg, #d03060 0%, #b02050 40%, #901840 70%, #701030 100%);
+    linear-gradient(165deg,
+      #ff4080 0%,
+      #e02060 25%,
+      #c01850 50%,
+      #a01040 75%,
+      #801030 100%);
   box-shadow:
-    inset 1px 1px 2px rgba(255, 150, 150, 0.5),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-    0 0 8px 2px rgba(224, 17, 95, 0.8),
-    0 0 14px 4px rgba(224, 17, 95, 0.5);
+    /* Inner highlight - hot core */
+    inset 0 0 8px rgba(255, 200, 200, 0.6),
+    inset 1px 1px 3px rgba(255, 255, 255, 0.3),
+    /* Outer glow layers - backlit effect */
+    0 0 10px 2px rgba(255, 64, 128, 0.9),
+    0 0 20px 6px rgba(224, 17, 95, 0.7),
+    0 0 35px 10px rgba(224, 17, 95, 0.4),
+    0 0 50px 15px rgba(224, 17, 95, 0.2);
   opacity: 1;
   animation: gemPulseRuby 2s ease-in-out infinite;
 }
 
 #connection-status.connected .status-gem.gem-sapphire {
   background:
-    linear-gradient(165deg, #4080e0 0%, #3060c0 40%, #2850a0 70%, #204080 100%);
+    linear-gradient(165deg,
+      #60a0ff 0%,
+      #4080e0 25%,
+      #3060c0 50%,
+      #2050a0 75%,
+      #104080 100%);
   box-shadow:
-    inset 1px 1px 2px rgba(150, 180, 255, 0.5),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-    0 0 8px 2px rgba(15, 82, 186, 0.8),
-    0 0 14px 4px rgba(15, 82, 186, 0.5);
+    /* Inner highlight - hot core */
+    inset 0 0 8px rgba(200, 220, 255, 0.6),
+    inset 1px 1px 3px rgba(255, 255, 255, 0.3),
+    /* Outer glow layers - backlit effect */
+    0 0 10px 2px rgba(96, 160, 255, 0.9),
+    0 0 20px 6px rgba(15, 82, 186, 0.7),
+    0 0 35px 10px rgba(15, 82, 186, 0.4),
+    0 0 50px 15px rgba(15, 82, 186, 0.2);
   opacity: 1;
   animation: gemPulseSapphire 2s ease-in-out infinite;
   animation-delay: 1s;
@@ -306,34 +324,42 @@ html, body {
 @keyframes gemPulseRuby {
   0%, 100% {
     box-shadow:
-      inset 1px 1px 2px rgba(255, 150, 150, 0.4),
-      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 6px 1px rgba(224, 17, 95, 0.5),
-      0 0 12px 3px rgba(224, 17, 95, 0.3);
+      inset 0 0 6px rgba(255, 200, 200, 0.5),
+      inset 1px 1px 2px rgba(255, 255, 255, 0.2),
+      0 0 8px 2px rgba(255, 64, 128, 0.8),
+      0 0 18px 5px rgba(224, 17, 95, 0.6),
+      0 0 30px 8px rgba(224, 17, 95, 0.3),
+      0 0 45px 12px rgba(224, 17, 95, 0.15);
   }
   50% {
     box-shadow:
-      inset 1px 1px 2px rgba(255, 150, 150, 0.5),
-      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 10px 3px rgba(224, 17, 95, 0.8),
-      0 0 16px 5px rgba(224, 17, 95, 0.5);
+      inset 0 0 10px rgba(255, 200, 200, 0.7),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.4),
+      0 0 12px 3px rgba(255, 64, 128, 1),
+      0 0 25px 8px rgba(224, 17, 95, 0.8),
+      0 0 40px 12px rgba(224, 17, 95, 0.5),
+      0 0 60px 18px rgba(224, 17, 95, 0.25);
   }
 }
 
 @keyframes gemPulseSapphire {
   0%, 100% {
     box-shadow:
-      inset 1px 1px 2px rgba(150, 180, 255, 0.4),
-      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 6px 1px rgba(15, 82, 186, 0.5),
-      0 0 12px 3px rgba(15, 82, 186, 0.3);
+      inset 0 0 6px rgba(200, 220, 255, 0.5),
+      inset 1px 1px 2px rgba(255, 255, 255, 0.2),
+      0 0 8px 2px rgba(96, 160, 255, 0.8),
+      0 0 18px 5px rgba(15, 82, 186, 0.6),
+      0 0 30px 8px rgba(15, 82, 186, 0.3),
+      0 0 45px 12px rgba(15, 82, 186, 0.15);
   }
   50% {
     box-shadow:
-      inset 1px 1px 2px rgba(150, 180, 255, 0.5),
-      inset -1px -1px 1px rgba(0, 0, 0, 0.3),
-      0 0 10px 3px rgba(15, 82, 186, 0.8),
-      0 0 16px 5px rgba(15, 82, 186, 0.5);
+      inset 0 0 10px rgba(200, 220, 255, 0.7),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.4),
+      0 0 12px 3px rgba(96, 160, 255, 1),
+      0 0 25px 8px rgba(15, 82, 186, 0.8),
+      0 0 40px 12px rgba(15, 82, 186, 0.5),
+      0 0 60px 18px rgba(15, 82, 186, 0.25);
   }
 }
 
@@ -1135,6 +1161,11 @@ html, body {
 
 #focus-view.active {
   animation: viewSlideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Skip animation when returning to same session */
+#focus-view.active.no-animate {
+  animation: none;
 }
 
 /* Refresh button spin */
