@@ -26,12 +26,25 @@ npm-debug.log*
 *.tmp
 *.temp
 
-# Test screenshots
+# Test screenshots and reference images
 screenshot-*.png
+Screenshot*.png
+IMG_*.png
+IMG_*.jpg
+IMG_*.url
+Bag_*_Sprite.png
 
-# Reference images (optional - can include if desired)
-# *.png
-# *.jpg
+# Plan files (temporary)
+PLAN-*.md
+
+# Session notes (local only)
+.claude-session-notes.md
+
+# Downloaded archives
+*.zip
+
+# Extracted tool folders
+vertical-canvas-windows/
 
 # Environment variables (sensitive - contains auth tokens)
 .env
