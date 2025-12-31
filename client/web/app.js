@@ -878,7 +878,7 @@
     if (ws && ws.readyState === WebSocket.OPEN) {
       // Show loading state
       sessionCards.classList.add('loading');
-      setConnectionStatus('refreshing', 'Refreshing');
+      setConnectionStatus('refreshing', 'Connecting');
       ws.send(JSON.stringify({ type: 'list_sessions' }));
     }
   }

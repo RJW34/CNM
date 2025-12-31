@@ -205,6 +205,7 @@ html, body {
   gap: 16px;
   padding: 8px 0 12px;
   margin-bottom: 8px;
+  overflow: visible;
 }
 
 /* Status text - larger, centered */
@@ -233,27 +234,25 @@ html, body {
     0% 85%,
     0% 15%
   );
-  transition: all 0.5s ease;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
 }
 
-/* Disconnected state - nearly invisible, dark void */
+/* Disconnected state - nearly invisible, dark void, pushed apart */
 .status-gem.gem-ruby {
   background:
     linear-gradient(165deg, #0a0203 0%, #060102 40%, #030101 70%, #010000 100%);
-  box-shadow:
-    inset 1px 1px 1px rgba(255, 80, 80, 0.02),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.9);
-  opacity: 0.2;
+  filter: drop-shadow(0 0 0 transparent);
+  opacity: 0.3;
+  transform: translateX(-12px);
 }
 
 .status-gem.gem-sapphire {
   background:
     linear-gradient(165deg, #030408 0%, #020204 40%, #010102 70%, #000001 100%);
-  box-shadow:
-    inset 1px 1px 1px rgba(80, 120, 255, 0.02),
-    inset -1px -1px 1px rgba(0, 0, 0, 0.9);
-  opacity: 0.2;
+  filter: drop-shadow(0 0 0 transparent);
+  opacity: 0.3;
+  transform: translateX(12px);
 }
 
 /* Connected state - everything lights up */
@@ -266,27 +265,28 @@ html, body {
   animation: textGlow 2s ease-in-out infinite;
 }
 
-/* Connected state - backlit LED indicator style */
+/* Connected state - backlit LED indicator style, gems slide together */
+/* Note: Using filter: drop-shadow because box-shadow is clipped by clip-path */
 #connection-status.connected .status-gem.gem-ruby {
-  background: #850101;
-  box-shadow:
-    /* Soft LED backlight bleeding out from behind */
-    0 0 8px 2px rgba(165, 2, 2, 0.9),
-    0 0 20px 6px rgba(133, 1, 1, 0.6),
-    0 0 35px 12px rgba(101, 0, 0, 0.35),
-    0 0 50px 18px rgba(74, 0, 0, 0.15);
+  background: linear-gradient(165deg, #a50202 0%, #850101 50%, #650000 100%);
+  filter:
+    drop-shadow(0 0 4px rgba(165, 2, 2, 1))
+    drop-shadow(0 0 8px rgba(165, 2, 2, 0.8))
+    drop-shadow(0 0 16px rgba(133, 1, 1, 0.6))
+    drop-shadow(0 0 24px rgba(101, 0, 0, 0.4));
   opacity: 1;
+  transform: translateX(0);
 }
 
 #connection-status.connected .status-gem.gem-sapphire {
-  background: #040273;
-  box-shadow:
-    /* Soft LED backlight bleeding out from behind */
-    0 0 8px 2px rgba(18, 16, 224, 0.9),
-    0 0 20px 6px rgba(8, 5, 192, 0.6),
-    0 0 35px 12px rgba(5, 3, 160, 0.35),
-    0 0 50px 18px rgba(4, 2, 115, 0.15);
+  background: linear-gradient(165deg, #1210e0 0%, #040273 50%, #030045 100%);
+  filter:
+    drop-shadow(0 0 4px rgba(18, 16, 224, 1))
+    drop-shadow(0 0 8px rgba(18, 16, 224, 0.8))
+    drop-shadow(0 0 16px rgba(8, 5, 192, 0.6))
+    drop-shadow(0 0 24px rgba(4, 2, 115, 0.4));
   opacity: 1;
+  transform: translateX(0);
 }
 
 @keyframes textGlow {
@@ -356,14 +356,19 @@ html, body {
 /* View Controls - Centered glass effect */
 #view-controls {
   display: flex;
-  justify-content: center;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
   padding: 10px 16px;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-amount));
   -webkit-backdrop-filter: blur(var(--blur-amount));
   border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
+}
+
+.view-controls-left {
+  display: flex;
+  gap: 8px;
 }
 
 .view-btn, #refresh-btn {
@@ -448,9 +453,12 @@ html, body {
 }
 
 #pull-refresh-icon {
+  width: 36px;
+  height: 36px;
   color: var(--emerald-400);
   transition: transform 0.3s ease;
   filter: drop-shadow(0 0 8px var(--emerald-glow));
+  flex-shrink: 0;
 }
 
 #pull-refresh.pulling #pull-refresh-icon {
@@ -770,23 +778,50 @@ html, body {
   font-size: 18px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #3a4050;
+  color: #2a3a30;
   text-shadow:
-    /* Ruby stroke - left side */
-    -1px -1px 0 var(--accent-ruby),
-    -1px 0 0 var(--accent-ruby),
-    -1px 1px 0 var(--accent-ruby),
-    /* Sapphire stroke - right side */
-    1px -1px 0 var(--accent-sapphire),
-    1px 0 0 var(--accent-sapphire),
-    1px 1px 0 var(--accent-sapphire),
-    /* Top/bottom blend */
-    0 -1px 0 var(--accent-ruby-light),
-    0 1px 0 var(--accent-ruby-light),
+    /* Emerald stroke - all sides */
+    -1px -1px 0 var(--accent-emerald),
+    -1px 0 0 var(--accent-emerald),
+    -1px 1px 0 var(--accent-emerald),
+    1px -1px 0 var(--accent-emerald),
+    1px 0 0 var(--accent-emerald),
+    1px 1px 0 var(--accent-emerald),
+    0 -1px 0 var(--accent-emerald-light),
+    0 1px 0 var(--accent-emerald-light),
     /* Outer glow */
-    0 0 8px var(--glow-ruby),
-    0 0 8px var(--glow-sapphire);
-  animation: gemShimmer 4s ease-in-out infinite;
+    0 0 8px var(--glow-emerald),
+    0 0 12px var(--glow-emerald);
+  animation: emeraldShimmer 4s ease-in-out infinite;
+}
+
+@keyframes emeraldShimmer {
+  0%, 100% {
+    text-shadow:
+      -1px -1px 0 var(--accent-emerald),
+      -1px 0 0 var(--accent-emerald),
+      -1px 1px 0 var(--accent-emerald),
+      1px -1px 0 var(--accent-emerald),
+      1px 0 0 var(--accent-emerald),
+      1px 1px 0 var(--accent-emerald),
+      0 -1px 0 var(--accent-emerald-light),
+      0 1px 0 var(--accent-emerald-light),
+      0 0 8px var(--glow-emerald),
+      0 0 12px var(--glow-emerald);
+  }
+  50% {
+    text-shadow:
+      -1px -1px 0 var(--emerald-300),
+      -1px 0 0 var(--emerald-300),
+      -1px 1px 0 var(--emerald-300),
+      1px -1px 0 var(--emerald-300),
+      1px 0 0 var(--emerald-300),
+      1px 1px 0 var(--emerald-300),
+      0 -1px 0 var(--emerald-200),
+      0 1px 0 var(--emerald-200),
+      0 0 12px var(--glow-emerald),
+      0 0 20px var(--emerald-glow-strong);
+  }
 }
 
 /* Hint text below "No Active Links" */
@@ -794,7 +829,7 @@ html, body {
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.5px;
-  color: var(--text-muted);
+  color: var(--emerald-300);
   margin-top: 16px;
   animation: hintBounce 2s ease-in-out infinite;
   position: relative;
@@ -811,7 +846,7 @@ html, body {
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 8px solid var(--text-muted);
+  border-top: 8px solid var(--emerald-400);
   animation: arrowBounce 2s ease-in-out infinite;
 }
 
@@ -1656,21 +1691,23 @@ body.keyboard-visible #focus-terminal {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
+  gap: 8px;
+  padding: 0 14px;
   height: 38px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, rgba(14, 144, 56, 0.2), rgba(11, 115, 44, 0.1));
+  border: 1px solid var(--emerald-500);
   border-radius: 10px;
-  color: var(--text-secondary);
+  color: var(--emerald-300);
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  box-shadow: 0 0 8px var(--emerald-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 #folder-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--emerald-300);
-  box-shadow: 0 0 12px var(--emerald-glow);
+  background: linear-gradient(135deg, rgba(14, 144, 56, 0.3), rgba(11, 115, 44, 0.15));
+  color: var(--emerald-200);
+  border-color: var(--emerald-400);
+  box-shadow: 0 0 16px var(--emerald-glow-strong);
 }
 
 #folder-btn:active {
@@ -1678,10 +1715,17 @@ body.keyboard-visible #focus-terminal {
 }
 
 #folder-btn.active {
-  background: rgba(14, 144, 56, 0.15);
-  border-color: var(--emerald-500);
-  color: var(--emerald-300);
-  box-shadow: 0 0 8px var(--emerald-glow);
+  background: linear-gradient(135deg, rgba(14, 144, 56, 0.35), rgba(11, 115, 44, 0.2));
+  border-color: var(--emerald-300);
+  color: var(--emerald-100);
+  box-shadow: 0 0 12px var(--emerald-glow-strong);
+}
+
+.folder-btn-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 /* Panel Overlay */
