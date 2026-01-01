@@ -24,12 +24,13 @@
     return;
   }
   const statusTextEl = connectionStatus.querySelector('.status-text');
-  const viewBtns = document.querySelectorAll('.view-btn');
   const refreshBtn = document.getElementById('refresh-btn');
   const dashboardView = document.getElementById('dashboard-view');
   const sessionCards = document.getElementById('session-cards');
   const splitView = document.getElementById('split-view');
   const splitContainer = document.getElementById('split-container');
+  const splitBackBtn = document.getElementById('split-back-btn');
+  const splitTitle = document.getElementById('split-title');
   const focusView = document.getElementById('focus-view');
   const focusTerminal = document.getElementById('focus-terminal');
   const focusSessionName = document.getElementById('focus-session-name');
@@ -50,14 +51,18 @@
   const folderPanelClose = document.getElementById('folder-panel-close');
   const folderList = document.getElementById('folder-list');
   const skipPermissionsToggle = document.getElementById('skip-permissions-toggle');
+  const musicBtn = document.getElementById('music-btn');
+  const ambientAudio = document.getElementById('ambient-audio');
 
   // State
   let ws = null;
   let reconnectDelay = RECONNECT_DELAY;
   let reconnectTimeout = null;
   let pingInterval = null;
-  let availableSessions = [];
+  let availableProjects = []; // Unified list: all folders + active session data
   let currentView = 'dashboard';
+  const startupTime = Date.now();
+  const STARTUP_GRACE_PERIOD = 15000; // 15s grace period for server startup
 
   // Sessions state: Map of sessionId -> { term, fitAddon, status, lastActivity, preview, connected }
   const sessions = new Map();
@@ -65,6 +70,8 @@
   let lastFocusedSessionId = null; // Track which session the terminal was last showing (to avoid jitter on re-entry)
   let focusTerm = null;
   let focusFitAddon = null;
+  let focusTermDataDisposable = null; // Disposable for terminal onData listener (prevents memory leaks)
+  let sessionConnectionPending = false; // Track if we're waiting for session connection
 
   // Split view state
   const splitPanels = new Map(); // sessionId -> { term, fitAddon, panel }
@@ -76,6 +83,7 @@
   // Upload state
   let uploadInProgress = false;
   let uploadStatusTimeout = null;
+  let pendingUploadSessionId = null; // Session ID for pending file upload
 
   // Create session state
   let createSessionPending = false;
@@ -84,10 +92,30 @@
   let availableFolders = [];
   let folderSessionPending = false;
 
+  // Ambient music state
+  let musicEnabled = localStorage.getItem('cnm-music') !== 'off';
+  let musicPlaying = false;
+  let musicPausedByVisibility = false;  // Track if we paused due to tab hidden
+
   // Get token from URL
   function getToken() {
     const params = new URLSearchParams(window.location.search);
     return params.get('token');
+  }
+
+  // Safe WebSocket send with error handling
+  function wsSend(data) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn('[WS] Cannot send - not connected');
+      return false;
+    }
+    try {
+      ws.send(typeof data === 'string' ? data : JSON.stringify(data));
+      return true;
+    } catch (err) {
+      console.error('[WS] Send error:', err.message);
+      return false;
+    }
   }
 
   // Clear token from URL (after successful auth, cookie is set)
@@ -160,11 +188,6 @@
   function switchView(viewName) {
     currentView = viewName;
 
-    // Update view buttons
-    viewBtns.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.view === viewName);
-    });
-
     // Show/hide views
     dashboardView.classList.toggle('active', viewName === 'dashboard');
     splitView.classList.toggle('active', viewName === 'split');
@@ -192,124 +215,229 @@
     }
   }
 
-  // Render session cards in dashboard
+  // Render project cards in dashboard (unified: active + inactive projects)
   function renderDashboard() {
     // Update link count text
     const agentCountEl = document.getElementById('agent-count');
     const emptyHintEl = document.getElementById('empty-hint');
+    const activeCount = availableProjects.filter(p => p.isActive).length;
+    const claudeCount = availableProjects.filter(p => p.isClaudeProject && !p.isActive).length;
+
     if (agentCountEl) {
-      if (availableSessions.length === 0) {
-        agentCountEl.textContent = 'No Active Links.';
+      if (availableProjects.length === 0) {
+        agentCountEl.textContent = 'No Projects Found';
         if (emptyHintEl) emptyHintEl.style.display = '';
-      } else if (availableSessions.length === 1) {
-        agentCountEl.textContent = '1 active link';
+      } else if (activeCount === 0 && claudeCount === 0) {
+        agentCountEl.textContent = `${availableProjects.length} projects`;
+        if (emptyHintEl) emptyHintEl.style.display = 'none';
+      } else if (activeCount === 0) {
+        // No active, but have Claude projects ready
+        agentCountEl.textContent = `${claudeCount} ready · ${availableProjects.length} projects`;
         if (emptyHintEl) emptyHintEl.style.display = 'none';
       } else {
-        agentCountEl.textContent = `${availableSessions.length} active links`;
+        // Show active count, and optionally Claude ready count
+        const readyText = claudeCount > 0 ? ` · ${claudeCount} ready` : '';
+        agentCountEl.textContent = `${activeCount} active${readyText} · ${availableProjects.length} projects`;
         if (emptyHintEl) emptyHintEl.style.display = 'none';
       }
     }
 
-    if (availableSessions.length === 0) {
+    if (availableProjects.length === 0) {
       sessionCards.innerHTML = '';
       return;
     }
 
-    sessionCards.innerHTML = availableSessions.map(s => {
-      const localSession = sessions.get(s.id) || {};
+    sessionCards.innerHTML = availableProjects.map(p => {
+      const localSession = sessions.get(p.id) || {};
 
-      // Use server-provided preview, fall back to local session preview, then clean it
-      const rawPreview = s.preview || localSession.preview || '';
-      const preview = cleanPreview(rawPreview) || 'Waiting for output...';
+      if (p.isActive) {
+        // Active project - show session info
+        const rawPreview = p.preview || localSession.preview || '';
+        const preview = cleanPreview(rawPreview) || 'Waiting for output...';
 
-      // Determine activity from lastSeen timestamp
-      const lastSeenAge = s.lastSeen ? (Date.now() - s.lastSeen) : Infinity;
-      const isActive = lastSeenAge < ACTIVITY_TIMEOUT;
-      const isHealthy = lastSeenAge < 15000; // Updated within 15s
+        // Determine activity from lastSeen timestamp
+        const lastSeenAge = p.lastSeen ? (Date.now() - p.lastSeen) : Infinity;
+        const isRecentlyActive = lastSeenAge < ACTIVITY_TIMEOUT;
+        const isHealthy = lastSeenAge < 15000;
 
-      const activityClass = isActive ? 'active' : (isHealthy ? 'idle' : '');
+        const activityClass = isRecentlyActive ? 'active' : (isHealthy ? 'idle' : '');
 
-      // Better status text based on actual state
-      let badgeClass, badgeText;
-      if (isActive) {
-        badgeClass = 'working';
-        badgeText = 'Active';
-      } else if (isHealthy) {
-        badgeClass = 'waiting';
-        badgeText = 'Idle';
+        let badgeClass, badgeText;
+        if (isRecentlyActive) {
+          badgeClass = 'working';
+          badgeText = 'Active';
+        } else if (isHealthy) {
+          badgeClass = 'waiting';
+          badgeText = 'Idle';
+        } else {
+          badgeClass = '';
+          badgeText = 'Running';
+        }
+
+        const started = new Date(p.started);
+        const ago = formatTimeAgo(started);
+        const clientInfo = p.clientCount > 0 ? ` · ${p.clientCount} viewing` : '';
+
+        // Truncate path smartly
+        const maxPathLen = 45;
+        let displayPath = p.cwd;
+        if (displayPath.length > maxPathLen) {
+          const start = displayPath.substring(0, 15);
+          const end = displayPath.substring(displayPath.length - 25);
+          displayPath = `${start}...${end}`;
+        }
+
+        return `
+          <div class="session-card ${isRecentlyActive ? 'has-activity' : ''}" data-session-id="${p.id}" data-active="true">
+            <div class="session-card-header">
+              <div class="session-card-title">
+                <span class="activity-dot ${activityClass}"></span>
+                <span class="session-card-name">${escapeHtml(p.id)}</span>
+              </div>
+              <span class="session-card-badge ${badgeClass}">${badgeText}</span>
+            </div>
+            <div class="session-card-path" title="${escapeHtml(p.cwd)}">${escapeHtml(displayPath)}</div>
+            <div class="session-card-preview">${escapeHtml(preview)}</div>
+            <div class="session-card-footer">
+              <span class="session-card-time">Started ${ago}${clientInfo}</span>
+              <div class="session-card-actions">
+                <button class="card-action-btn card-upload-btn" data-action="upload" title="Upload file to project">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+                  </svg>
+                </button>
+                <button class="card-action-btn" data-action="split" title="Add to split view">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 5v14h8V5H3zm10 0v6h8V5h-8zm0 8v6h8v-6h-8z"/>
+                  </svg>
+                </button>
+                <button class="card-action-btn primary" data-action="focus" title="Open in focus mode">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  </svg>
+                  <span>Open</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
       } else {
-        badgeClass = '';
-        badgeText = 'Available';
-      }
+        // Inactive project - show start options
+        const maxPathLen = 45;
+        let displayPath = p.cwd;
+        if (displayPath.length > maxPathLen) {
+          const start = displayPath.substring(0, 15);
+          const end = displayPath.substring(displayPath.length - 25);
+          displayPath = `${start}...${end}`;
+        }
 
-      const started = new Date(s.started);
-      const ago = formatTimeAgo(started);
+        // Claude project indicator
+        const isClaudeProject = p.isClaudeProject;
+        const claudeClass = isClaudeProject ? 'claude-project' : '';
+        const claudeBadge = isClaudeProject ? '<span class="claude-badge" title="Claude Code project">Claude</span>' : '';
+        const hintText = isClaudeProject
+          ? 'Claude Code project - ready to attach'
+          : 'Click to start a Claude session';
 
-      // Show connected clients count
-      const clientInfo = s.clientCount > 0 ? ` · ${s.clientCount} viewing` : '';
-
-      // Truncate path smartly (show start and end)
-      const maxPathLen = 45;
-      let displayPath = s.cwd;
-      if (displayPath.length > maxPathLen) {
-        const start = displayPath.substring(0, 15);
-        const end = displayPath.substring(displayPath.length - 25);
-        displayPath = `${start}...${end}`;
-      }
-
-      return `
-        <div class="session-card ${isActive ? 'has-activity' : ''}" data-session-id="${s.id}">
-          <div class="session-card-header">
-            <div class="session-card-title">
-              <span class="activity-dot ${activityClass}"></span>
-              <span class="session-card-name">${escapeHtml(s.id)}</span>
+        return `
+          <div class="session-card inactive ${claudeClass}" data-session-id="${p.id}" data-active="false">
+            <div class="session-card-header">
+              <div class="session-card-title">
+                <span class="activity-dot ${isClaudeProject ? 'claude' : 'offline'}"></span>
+                <span class="session-card-name">${escapeHtml(p.id)}</span>
+                ${claudeBadge}
+              </div>
+              <span class="session-card-badge ${isClaudeProject ? 'claude' : 'offline'}">${isClaudeProject ? 'Ready' : 'Offline'}</span>
             </div>
-            <span class="session-card-badge ${badgeClass}">${badgeText}</span>
-          </div>
-          <div class="session-card-path" title="${escapeHtml(s.cwd)}">${escapeHtml(displayPath)}</div>
-          <div class="session-card-preview">${escapeHtml(preview)}</div>
-          <div class="session-card-footer">
-            <span class="session-card-time">Started ${ago}${clientInfo}</span>
-            <div class="session-card-actions">
-              <button class="card-action-btn" data-action="split" title="Add to split view">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="3" y="3" width="8" height="18" rx="1"/>
-                  <rect x="13" y="3" width="8" height="18" rx="1"/>
-                </svg>
-                <span>Split</span>
-              </button>
-              <button class="card-action-btn primary" data-action="focus" title="Open in focus mode">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                </svg>
-                <span>Open</span>
-              </button>
+            <div class="session-card-path" title="${escapeHtml(p.cwd)}">${escapeHtml(displayPath)}</div>
+            <div class="session-card-preview inactive-hint">${hintText}</div>
+            <div class="session-card-footer">
+              <span class="session-card-time">${isClaudeProject ? 'Not attached' : 'Not running'}</span>
+              <div class="session-card-actions">
+                <button class="card-action-btn" data-action="start" title="Start Claude session">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <span>Start</span>
+                </button>
+                <button class="card-action-btn" data-action="start-skip" title="Start with --dangerously-skip-permissions">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13 3v6h4l-5 7v-6H8l5-7z"/>
+                  </svg>
+                  <span>Quick</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
+      }
     }).join('');
 
-    // Add click handlers
-    document.querySelectorAll('.session-card').forEach(card => {
+    // Event handlers are now managed via delegation in setupCardEventDelegation()
+  }
+
+  // Event delegation for session cards - single listener, no memory leaks
+  function setupCardEventDelegation() {
+    sessionCards.addEventListener('click', (e) => {
+      const card = e.target.closest('.session-card');
+      if (!card) return;
+
       const sessionId = card.dataset.sessionId;
+      const isActive = card.dataset.active === 'true';
+      const actionBtn = e.target.closest('.card-action-btn');
 
-      card.addEventListener('click', (e) => {
-        // If clicked on action button, don't trigger card click
-        if (e.target.closest('.card-action-btn')) return;
+      if (actionBtn) {
+        const action = actionBtn.dataset.action;
+
+        if (isActive) {
+          switch (action) {
+            case 'focus':
+              openFocusView(sessionId);
+              break;
+            case 'upload':
+              pendingUploadSessionId = sessionId;
+              fileInput.click();
+              break;
+            case 'split':
+              addToSplitView(sessionId);
+              break;
+          }
+        } else {
+          switch (action) {
+            case 'start':
+              startProjectSession(sessionId, false);
+              break;
+            case 'start-skip':
+              startProjectSession(sessionId, true);
+              break;
+          }
+        }
+        return; // Action button handled, don't trigger card click
+      }
+
+      // Card body click (not on action button)
+      if (isActive) {
         openFocusView(sessionId);
-      });
-
-      card.querySelector('[data-action="focus"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openFocusView(sessionId);
-      });
-
-      card.querySelector('[data-action="split"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        addToSplitView(sessionId);
-      });
+      } else {
+        startProjectSession(sessionId, false);
+      }
     });
+  }
+
+  // Start a session for an inactive project
+  function startProjectSession(projectId, skipPermissions) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showUploadStatus('error', 'Not connected to server');
+      return;
+    }
+
+    showUploadStatus('uploading', `Starting ${projectId}...`);
+
+    ws.send(JSON.stringify({
+      type: 'start_folder_session',
+      folderName: projectId,
+      skipPermissions
+    }));
   }
 
   // Open focus view for a session
@@ -317,7 +445,7 @@
     const isReturningToSameSession = (sessionId === lastFocusedSessionId && focusTerm);
     focusedSessionId = sessionId;
 
-    const session = availableSessions.find(s => s.id === sessionId);
+    const session = availableProjects.find(s => s.id === sessionId);
     focusSessionName.textContent = sessionId;
 
     // Create or reuse terminal
@@ -327,8 +455,8 @@
       focusFitAddon = fitAddon;
       term.open(focusTerminal);
 
-      // Handle terminal input
-      term.onData((data) => {
+      // Handle terminal input - store disposable so we can clean up later
+      focusTermDataDisposable = term.onData((data) => {
         if (focusedSessionId) {
           sendInput(data);
         }
@@ -339,8 +467,20 @@
         showKeyboard();
       });
     } else if (!isReturningToSameSession) {
+      // Dispose old data handler before clearing
+      if (focusTermDataDisposable) {
+        focusTermDataDisposable.dispose();
+      }
+
       // Only clear terminal when switching to a DIFFERENT session
       focusTerm.clear();
+
+      // Re-attach data handler for new session
+      focusTermDataDisposable = focusTerm.onData((data) => {
+        if (focusedSessionId) {
+          sendInput(data);
+        }
+      });
     }
 
     // Track which session the terminal is showing
@@ -424,21 +564,18 @@
     // Store panel
     splitPanels.set(sessionId, { term, fitAddon, panel });
 
-    // Close button
-    panel.querySelector('.split-panel-close').addEventListener('click', () => {
-      removeSplitPanel(sessionId);
-    });
-
-    // Click to open in focus
-    panel.querySelector('.split-panel-terminal').addEventListener('dblclick', () => {
-      openFocusView(sessionId);
-    });
+    // Event handlers managed via delegation in setupSplitEventDelegation()
 
     // Add to container
     splitContainer.appendChild(panel);
 
     // Connect to session
     connectToSession(sessionId);
+
+    // Update split title with count
+    if (splitTitle) {
+      splitTitle.textContent = `Split View (${splitPanels.size} session${splitPanels.size !== 1 ? 's' : ''})`;
+    }
 
     // Switch to split view
     switchView('split');
@@ -453,9 +590,20 @@
     const panel = splitPanels.get(sessionId);
     if (!panel) return;
 
+    // Clear activity timeout to prevent memory leak
+    if (panel.activityTimeout) {
+      clearTimeout(panel.activityTimeout);
+      panel.activityTimeout = null;
+    }
+
     panel.term.dispose();
     panel.panel.remove();
     splitPanels.delete(sessionId);
+
+    // Update split title
+    if (splitTitle) {
+      splitTitle.textContent = `Split View (${splitPanels.size} session${splitPanels.size !== 1 ? 's' : ''})`;
+    }
 
     // If no panels left, go back to dashboard
     if (splitPanels.size === 0) {
@@ -466,7 +614,10 @@
   // Connect to a session via WebSocket
   function connectToSession(sessionId) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'connect_session', sessionId }));
+      // Mark connection as pending until we receive confirmation
+      sessionConnectionPending = true;
+
+      wsSend({ type: 'connect_session', sessionId });
 
       // Initialize session state if not exists
       if (!sessions.has(sessionId)) {
@@ -476,6 +627,11 @@
           preview: '',
           connected: false
         });
+      } else {
+        // Reset connected state when reconnecting
+        const session = sessions.get(sessionId);
+        session.connected = false;
+        session.status = 'connecting';
       }
     }
   }
@@ -689,7 +845,8 @@
     try {
       ws = new WebSocket(wsUrl);
     } catch (err) {
-      setConnectionStatus('error', 'Connection failed');
+      const inStartup = (Date.now() - startupTime) < STARTUP_GRACE_PERIOD;
+      setConnectionStatus('', inStartup ? 'Starting...' : 'Connection failed');
       scheduleReconnect();
       return;
     }
@@ -737,7 +894,9 @@
       if (event.code === 4001) {
         setConnectionStatus('error', 'Auth failed');
       } else {
-        setConnectionStatus('error', 'Disconnected');
+        // During startup grace period, show friendlier message
+        const inStartup = (Date.now() - startupTime) < STARTUP_GRACE_PERIOD;
+        setConnectionStatus('', inStartup ? 'Starting...' : 'Reconnecting...');
         scheduleReconnect();
       }
 
@@ -752,58 +911,106 @@
     };
 
     ws.onerror = (err) => {
-      setConnectionStatus('error', 'WS Error');
+      // During startup, errors are expected while server starts
+      const inStartup = (Date.now() - startupTime) < STARTUP_GRACE_PERIOD;
+      if (!inStartup) {
+        setConnectionStatus('error', 'Connection error');
+      }
     };
   }
 
   // Handle incoming messages
   function handleMessage(msg) {
     switch (msg.type) {
-      case 'sessions':
-        availableSessions = msg.sessions || [];
+      case 'projects':
+        availableProjects = msg.projects || [];
         sessionCards.classList.remove('loading');
         setConnectionStatus('connected', 'Connected');
+        clearTokenFromUrl();  // Security: remove token from URL after successful auth
         renderDashboard();
-        autoConnectSessions();
+        break;
+
+      case 'sessions':
+        // Legacy fallback - convert to projects format
+        availableProjects = (msg.sessions || []).map(s => ({
+          ...s,
+          isActive: true
+        }));
+        sessionCards.classList.remove('loading');
+        setConnectionStatus('connected', 'Connected');
+        clearTokenFromUrl();
+        renderDashboard();
         break;
 
       case 'output':
-        // Route to correct session based on sessionId
+        // REQUIRE sessionId from server, log warning if missing
+        if (!msg.sessionId) {
+          console.warn('[WS] Output message missing sessionId, using focusedSessionId');
+        }
         const outputSessionId = msg.sessionId || focusedSessionId;
         if (outputSessionId) {
           writeOutput(outputSessionId, msg.data);
-          // Receiving output means we're connected
-          if (outputSessionId === focusedSessionId) {
+          // Receiving output means we're connected - clear pending state
+          sessionConnectionPending = false;
+          // Only update focus status if this IS the focused session (and we know the sessionId)
+          if (msg.sessionId && msg.sessionId === focusedSessionId) {
             updateFocusStatus('connected');
+          }
+          // Mark session as connected
+          const outputSession = sessions.get(outputSessionId);
+          if (outputSession) {
+            outputSession.connected = true;
+            outputSession.status = 'connected';
           }
         }
         break;
 
       case 'scrollback':
-        // Write scrollback in chunks to prevent UI jitter
+        // REQUIRE sessionId from server, log warning if missing
+        if (!msg.sessionId) {
+          console.warn('[WS] Scrollback message missing sessionId, using focusedSessionId');
+        }
         const scrollbackSessionId = msg.sessionId || focusedSessionId;
         if (scrollbackSessionId && msg.data) {
           writeScrollbackChunked(scrollbackSessionId, msg.data);
-          // Receiving scrollback means we're connected
-          if (scrollbackSessionId === focusedSessionId) {
+          // Receiving scrollback means we're connected - clear pending state
+          sessionConnectionPending = false;
+          // Only update focus status if this IS the focused session (and we know the sessionId)
+          if (msg.sessionId && msg.sessionId === focusedSessionId) {
             updateFocusStatus('connected');
           }
           const scrollbackSession = sessions.get(scrollbackSessionId);
-          if (scrollbackSession) scrollbackSession.connected = true;
+          if (scrollbackSession) {
+            scrollbackSession.connected = true;
+            scrollbackSession.status = 'connected';
+          }
         }
         break;
 
       case 'status':
         const statusSessionId = msg.sessionId || focusedSessionId;
         if (msg.state === 'connected') {
+          // Clear pending state - connection confirmed
+          sessionConnectionPending = false;
           if (statusSessionId === focusedSessionId) {
             updateFocusStatus('connected');
           }
           const session = sessions.get(statusSessionId);
-          if (session) session.connected = true;
+          if (session) {
+            session.connected = true;
+            session.status = 'connected';
+          }
         } else if (msg.state === 'disconnected') {
+          // Clear any pending scrollback loading for this session (prevents permanent throttle)
+          loadingScrollback.delete(statusSessionId);
+
           if (statusSessionId === focusedSessionId) {
             updateFocusStatus('disconnected');
+          }
+          const disconnectedSession = sessions.get(statusSessionId);
+          if (disconnectedSession) {
+            disconnectedSession.connected = false;
+            disconnectedSession.status = 'disconnected';
           }
         }
         break;
@@ -846,15 +1053,15 @@
           if (msg.alreadyRunning) {
             showUploadStatus('success', `${msg.folderName} already running`);
           } else {
-            showUploadStatus('success', `Started ${msg.folderName}`);
+            const mode = msg.skipPermissions ? ' (skip permissions)' : '';
+            showUploadStatus('success', `Started ${msg.folderName}${mode}`);
           }
-          console.log(`[Folder] Session started: ${msg.folderName}`);
-          // Close panel and refresh
-          closeFolderPanel();
-          requestSessions();
+          console.log(`[Session] Started: ${msg.folderName}`);
+          // Refresh project list after short delay to let session register
+          setTimeout(() => requestProjects(), 1500);
         } else {
           showUploadStatus('error', msg.error || 'Failed to start session');
-          console.error('[Folder] Start failed:', msg.error);
+          console.error('[Session] Start failed:', msg.error);
         }
         break;
 
@@ -873,38 +1080,49 @@
     // This prevents 700KB+ scrollback from being sent repeatedly
   }
 
-  // Request session list
-  function requestSessions() {
+  // Request project list (unified: all folders + active session data)
+  function requestProjects() {
     if (ws && ws.readyState === WebSocket.OPEN) {
       // Show loading state
       sessionCards.classList.add('loading');
       setConnectionStatus('refreshing', 'Connecting');
-      ws.send(JSON.stringify({ type: 'list_sessions' }));
+      ws.send(JSON.stringify({ type: 'list_projects' }));
     }
+  }
+
+  // Legacy alias
+  function requestSessions() {
+    requestProjects();
   }
 
   // Send input to server
   function sendInput(data) {
-    if (ws && ws.readyState === WebSocket.OPEN && focusedSessionId) {
-      ws.send(JSON.stringify({ type: 'input', data }));
+    if (!focusedSessionId) return;
+
+    // Check if session is connected before sending
+    const session = sessions.get(focusedSessionId);
+    if (!session || !session.connected) {
+      // Still send - server will buffer if connection is establishing
+      console.log('[Input] Session not connected yet, input may be delayed');
     }
+    wsSend({ type: 'input', data });
   }
 
   // Send control key
   function sendControl(key) {
-    if (ws && ws.readyState === WebSocket.OPEN && focusedSessionId) {
-      ws.send(JSON.stringify({ type: 'control', key }));
+    if (focusedSessionId) {
+      wsSend({ type: 'control', key });
     }
   }
 
   // Send resize
   function sendResize() {
-    if (ws && ws.readyState === WebSocket.OPEN && focusedSessionId && focusTerm) {
-      ws.send(JSON.stringify({
+    if (focusedSessionId && focusTerm) {
+      wsSend({
         type: 'resize',
         cols: focusTerm.cols,
         rows: focusTerm.rows
-      }));
+      });
     }
   }
 
@@ -940,10 +1158,10 @@
     }
   }
 
-  // Upload a file to the session's working directory
-  function uploadFile(file) {
-    if (!focusedSessionId) {
-      showUploadStatus('error', 'No session connected');
+  // Upload a file to a session's working directory
+  function uploadFile(file, sessionId) {
+    if (!sessionId) {
+      showUploadStatus('error', 'No session selected');
       return;
     }
 
@@ -965,8 +1183,12 @@
       return;
     }
 
+    // Find session name for status message
+    const session = availableProjects.find(s => s.id === sessionId);
+    const sessionName = session ? session.id : sessionId;
+
     uploadInProgress = true;
-    showUploadStatus('uploading', `Uploading ${file.name}...`);
+    showUploadStatus('uploading', `Uploading to ${sessionName}...`);
 
     const reader = new FileReader();
 
@@ -976,13 +1198,13 @@
         const dataUrl = reader.result;
         const base64 = dataUrl.split(',')[1];
 
-        ws.send(JSON.stringify({
+        wsSend({
           type: 'upload_file',
-          sessionId: focusedSessionId,
+          sessionId: sessionId,
           filename: file.name,
           data: base64,
           size: file.size
-        }));
+        });
       } catch (err) {
         uploadInProgress = false;
         showUploadStatus('error', 'Failed to encode file');
@@ -1108,12 +1330,52 @@
       `;
     }).join('');
 
-    // Add click handlers
-    folderList.querySelectorAll('.folder-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const folderName = item.dataset.folder;
+    // Event handlers managed via delegation in setupFolderEventDelegation()
+  }
+
+  // Event delegation for folder list - single listener, no memory leaks
+  function setupFolderEventDelegation() {
+    if (!folderList) return;
+
+    folderList.addEventListener('click', (e) => {
+      const item = e.target.closest('.folder-item');
+      if (!item) return;
+
+      const folderName = item.dataset.folder;
+      if (folderName) {
         startFolderSession(folderName);
-      });
+      }
+    });
+  }
+
+  // Event delegation for split container - prevents listener stacking on panel add/remove
+  function setupSplitEventDelegation() {
+    if (!splitContainer) return;
+
+    splitContainer.addEventListener('dblclick', (e) => {
+      const panel = e.target.closest('.split-panel');
+      if (!panel) return;
+
+      // Only trigger on terminal area, not header
+      if (!e.target.closest('.split-panel-terminal')) return;
+
+      const sessionId = panel.dataset.sessionId;
+      if (sessionId) {
+        openFocusView(sessionId);
+      }
+    });
+
+    splitContainer.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('.split-panel-close');
+      if (!closeBtn) return;
+
+      const panel = closeBtn.closest('.split-panel');
+      if (panel) {
+        const sessionId = panel.dataset.sessionId;
+        if (sessionId) {
+          removeSplitPanel(sessionId);
+        }
+      }
     });
   }
 
@@ -1141,6 +1403,100 @@
     }));
   }
 
+  // Ambient music controls
+  function initMusic() {
+    if (!ambientAudio || !musicBtn) return;
+
+    // Set initial volume
+    ambientAudio.volume = 0.25;
+
+    // Update button state from saved preference
+    updateMusicButton();
+
+    // Handle tab visibility changes - pause when hidden, resume when visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Tab is hidden - pause music if playing
+        if (musicPlaying) {
+          musicPausedByVisibility = true;
+          ambientAudio.pause();
+          musicPlaying = false;
+          updateMusicButton();
+          console.log('[Music] Paused (tab hidden)');
+        }
+      } else {
+        // Tab is visible again - resume if we paused it
+        if (musicPausedByVisibility && musicEnabled) {
+          musicPausedByVisibility = false;
+          playMusic();
+          console.log('[Music] Resumed (tab visible)');
+        }
+      }
+    });
+
+    // Only auto-play if tab is visible
+    if (musicEnabled && !document.hidden) {
+      // Try to play - will fail silently if no user interaction yet
+      playMusic();
+    }
+  }
+
+  function updateMusicButton() {
+    if (!musicBtn) return;
+
+    if (musicEnabled && musicPlaying) {
+      musicBtn.classList.add('playing');
+      musicBtn.classList.remove('muted');
+    } else if (musicEnabled && !musicPlaying) {
+      musicBtn.classList.remove('playing', 'muted');
+    } else {
+      musicBtn.classList.add('muted');
+      musicBtn.classList.remove('playing');
+    }
+  }
+
+  function toggleMusic() {
+    musicEnabled = !musicEnabled;
+    localStorage.setItem('cnm-music', musicEnabled ? 'on' : 'off');
+
+    if (musicEnabled) {
+      playMusic();
+    } else {
+      pauseMusic();
+    }
+  }
+
+  function playMusic() {
+    if (!ambientAudio || !musicEnabled) return;
+
+    // Don't play if tab is hidden
+    if (document.hidden) {
+      console.log('[Music] Tab hidden, will play when visible');
+      return;
+    }
+
+    ambientAudio.play()
+      .then(() => {
+        musicPlaying = true;
+        musicPausedByVisibility = false;
+        updateMusicButton();
+      })
+      .catch(err => {
+        // Autoplay blocked - will play on next user interaction
+        console.log('[Music] Autoplay blocked, waiting for interaction');
+        musicPlaying = false;
+        updateMusicButton();
+      });
+  }
+
+  function pauseMusic() {
+    if (!ambientAudio) return;
+
+    ambientAudio.pause();
+    musicPlaying = false;
+    updateMusicButton();
+  }
+
   // Schedule reconnection
   function scheduleReconnect() {
     if (reconnectTimeout) {
@@ -1153,10 +1509,22 @@
     }, reconnectDelay);
   }
 
-  // Show iOS keyboard
+  // Show iOS keyboard - improved for Safari reliability
   function showKeyboard() {
-    hiddenInput.focus();
-    document.body.classList.add('keyboard-visible');
+    // Clear any previous value to ensure clean state
+    hiddenInput.value = '';
+
+    // Use setTimeout to ensure focus happens after current event loop
+    // This helps iOS Safari properly show the keyboard
+    setTimeout(() => {
+      hiddenInput.focus();
+      document.body.classList.add('keyboard-visible');
+
+      // Scroll terminal into view if needed
+      if (focusTerm) {
+        focusTerm.scrollToBottom();
+      }
+    }, 10);
   }
 
   // Hide iOS keyboard
@@ -1244,18 +1612,6 @@
 
   // Setup event listeners
   function setupEventListeners() {
-    // View toggle buttons
-    viewBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const view = btn.dataset.view;
-        if (view === 'focus' && !focusedSessionId) {
-          // If no session focused, stay on current view
-          return;
-        }
-        switchView(view);
-      });
-    });
-
     // Refresh button with spin animation
     refreshBtn.addEventListener('click', () => {
       refreshBtn.classList.add('spinning');
@@ -1289,10 +1645,24 @@
       });
     }
 
-    // Back button
+    // Music toggle button
+    if (musicBtn) {
+      musicBtn.addEventListener('click', () => {
+        toggleMusic();
+      });
+    }
+
+    // Back button (focus view)
     backBtn.addEventListener('click', () => {
       switchView('dashboard');
     });
+
+    // Back button (split view)
+    if (splitBackBtn) {
+      splitBackBtn.addEventListener('click', () => {
+        switchView('dashboard');
+      });
+    }
 
     // Expand button
     expandBtn.addEventListener('click', toggleFullscreen);
@@ -1302,16 +1672,19 @@
       uploadBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Set pending session to current focused session
+        pendingUploadSessionId = focusedSessionId;
         fileInput.click();
       });
 
       fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-          uploadFile(file);
+        if (file && pendingUploadSessionId) {
+          uploadFile(file, pendingUploadSessionId);
         }
-        // Reset input to allow selecting the same file again
+        // Reset input and pending session
         fileInput.value = '';
+        pendingUploadSessionId = null;
       });
     }
 
@@ -1322,7 +1695,10 @@
         e.stopPropagation();
         const key = btn.dataset.key;
         sendControl(key);
-        // Keep keyboard open if it was open
+        // Re-focus keyboard after control key to maintain input flow
+        if (document.body.classList.contains('keyboard-visible')) {
+          showKeyboard();
+        }
       });
     });
 
@@ -1368,13 +1744,29 @@
       }
     });
 
-    // Prevent iOS bounce scrolling
+    // Prevent iOS bounce scrolling - only on non-scrollable areas
+    // IMPORTANT: Be very selective to avoid blocking legitimate interactions
     document.body.addEventListener('touchmove', (e) => {
+      // Allow all scrolling in these containers
       if (e.target.closest('#dashboard-view')) return;
       if (e.target.closest('.split-panel-terminal')) return;
       if (e.target.closest('#focus-terminal')) return;
-      e.preventDefault();
+      if (e.target.closest('.folder-list')) return;
+      if (e.target.closest('.panel-content')) return;
+      // Only prevent on the app container itself (background areas)
+      if (e.target.id === 'app' || e.target === document.body) {
+        e.preventDefault();
+      }
     }, { passive: false });
+
+    // Setup event delegation for session cards (prevents memory leaks)
+    setupCardEventDelegation();
+
+    // Setup event delegation for folder list (prevents memory leaks)
+    setupFolderEventDelegation();
+
+    // Setup event delegation for split container (prevents memory leaks)
+    setupSplitEventDelegation();
   }
 
   // Initialize icons - apply random icon to pull-refresh indicator
@@ -1471,6 +1863,7 @@
   // Initialize
   function init() {
     initIcons();
+    initMusic();
     setupMobileInput();
     setupEventListeners();
     setupPullToRefresh();
