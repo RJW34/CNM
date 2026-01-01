@@ -88,12 +88,22 @@
   --glass-bg: rgba(20, 24, 30, 0.85);
   --glass-border: rgba(110, 120, 140, 0.3);
   --glass-highlight: rgba(190, 200, 220, 0.1);
-  --blur-amount: 20px;
+  --blur-amount: 12px; /* Reduced for iOS performance */
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  /* Z-index hierarchy - prevents collisions */
+  --z-base: 1;
+  --z-cards: 10;
+  --z-header: 50;
+  --z-modal-backdrop: 90;
+  --z-modal: 100;
+  --z-toast: 500;
+  --z-input: 1000;
+  --z-keyboard: 1001;
 }
 
 /* Display P3 wide gamut colors for modern iPhones */
@@ -130,6 +140,60 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ============================================
+   DEPTH LAYER: Ambient background effects
+   Adds subtle visual depth without performance cost
+   ============================================ */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  /* Radial vignette - darker at edges */
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 30%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.15) 50%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* Subtle gem-colored ambient glow spots */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+  background:
+    /* Ruby glow - top left */
+    radial-gradient(
+      ellipse 40% 30% at 10% 15%,
+      rgba(165, 2, 2, 0.15) 0%,
+      transparent 70%
+    ),
+    /* Sapphire glow - bottom right */
+    radial-gradient(
+      ellipse 35% 40% at 90% 85%,
+      rgba(18, 16, 224, 0.12) 0%,
+      transparent 70%
+    ),
+    /* Emerald glow - center bottom */
+    radial-gradient(
+      ellipse 50% 25% at 50% 95%,
+      rgba(14, 144, 56, 0.1) 0%,
+      transparent 70%
+    );
+}
+
 #app {
   display: flex;
   flex-direction: column;
@@ -141,20 +205,56 @@ html, body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Header - Glass effect with centered title */
+/* Header - Layered glass effect with depth */
 #header {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 18px 16px 20px;
-  background: var(--glass-bg);
+  background:
+    /* Subtle top highlight */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 30%,
+      transparent 70%,
+      rgba(0, 0, 0, 0.08) 100%
+    ),
+    var(--glass-bg);
   backdrop-filter: blur(var(--blur-amount));
   -webkit-backdrop-filter: blur(var(--blur-amount));
   border-bottom: 1px solid var(--glass-border);
   box-shadow:
-    inset 0 1px 0 var(--glass-highlight),
-    var(--shadow-sm);
+    /* Top edge highlight */
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    /* Bottom inner shadow */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    /* Outer glow */
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    /* Subtle colored underglow */
+    0 2px 12px rgba(165, 2, 2, 0.08);
   flex-shrink: 0;
+  position: relative;
+  z-index: var(--z-header);
+}
+
+/* Header bottom accent line */
+#header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ruby-700) 20%,
+    var(--ruby-500) 50%,
+    var(--ruby-700) 80%,
+    transparent 100%
+  );
+  opacity: 0.5;
 }
 
 /* Title block - stacked layout, centered */
@@ -268,25 +368,18 @@ html, body {
 /* Connected state - backlit LED indicator style, gems slide together */
 /* Note: Using filter: drop-shadow because box-shadow is clipped by clip-path */
 #connection-status.connected .status-gem.gem-ruby {
-  background: linear-gradient(165deg, #a50202 0%, #850101 50%, #650000 100%);
-  filter:
-    drop-shadow(0 0 4px rgba(165, 2, 2, 1))
-    drop-shadow(0 0 8px rgba(165, 2, 2, 0.8))
-    drop-shadow(0 0 16px rgba(133, 1, 1, 0.6))
-    drop-shadow(0 0 24px rgba(101, 0, 0, 0.4));
+  background: linear-gradient(165deg, #e51515 0%, #c50505 40%, #a50202 70%, #850101 100%);
   opacity: 1;
   transform: translateX(0);
+  animation: gemPulseRuby 2.5s ease-in-out infinite;
 }
 
 #connection-status.connected .status-gem.gem-sapphire {
-  background: linear-gradient(165deg, #1210e0 0%, #040273 50%, #030045 100%);
-  filter:
-    drop-shadow(0 0 4px rgba(18, 16, 224, 1))
-    drop-shadow(0 0 8px rgba(18, 16, 224, 0.8))
-    drop-shadow(0 0 16px rgba(8, 5, 192, 0.6))
-    drop-shadow(0 0 24px rgba(4, 2, 115, 0.4));
+  background: linear-gradient(165deg, #6565ff 0%, #3535ff 40%, #1210e0 70%, #0805c0 100%);
   opacity: 1;
   transform: translateX(0);
+  animation: gemPulseSapphire 2.5s ease-in-out infinite;
+  animation-delay: 1.25s;
 }
 
 @keyframes textGlow {
@@ -303,66 +396,45 @@ html, body {
   }
 }
 
+/* Simplified gem animations for iOS performance - fewer drop-shadows */
 @keyframes gemPulseRuby {
   0%, 100% {
-    box-shadow:
-      inset 0 0 10px rgba(255, 255, 255, 0.8),
-      inset 0 -4px 8px rgba(229, 21, 21, 0.7),
-      0 0 12px 3px rgba(229, 21, 21, 0.95),
-      0 0 25px 8px rgba(197, 5, 5, 0.8),
-      0 0 45px 15px rgba(165, 2, 2, 0.6),
-      0 0 65px 22px rgba(133, 1, 1, 0.35),
-      0 0 90px 30px rgba(101, 0, 0, 0.15);
-    filter: brightness(1.05);
+    filter: brightness(1.0) drop-shadow(0 0 8px rgba(197, 5, 5, 0.7));
   }
   50% {
-    box-shadow:
-      inset 0 0 15px rgba(255, 255, 255, 1),
-      inset 0 -4px 10px rgba(229, 21, 21, 0.9),
-      0 0 18px 5px rgba(229, 21, 21, 1),
-      0 0 35px 12px rgba(197, 5, 5, 0.95),
-      0 0 60px 20px rgba(165, 2, 2, 0.75),
-      0 0 85px 28px rgba(133, 1, 1, 0.45),
-      0 0 120px 40px rgba(101, 0, 0, 0.2);
-    filter: brightness(1.2);
+    filter: brightness(1.2) drop-shadow(0 0 14px rgba(229, 21, 21, 0.9));
   }
 }
 
 @keyframes gemPulseSapphire {
   0%, 100% {
-    box-shadow:
-      inset 0 0 10px rgba(255, 255, 255, 0.8),
-      inset 0 -4px 8px rgba(101, 101, 255, 0.7),
-      0 0 12px 3px rgba(101, 101, 255, 0.95),
-      0 0 25px 8px rgba(53, 53, 255, 0.8),
-      0 0 45px 15px rgba(18, 16, 224, 0.6),
-      0 0 65px 22px rgba(8, 5, 192, 0.35),
-      0 0 90px 30px rgba(4, 2, 115, 0.15);
-    filter: brightness(1.05);
+    filter: brightness(1.0) drop-shadow(0 0 8px rgba(53, 53, 255, 0.7));
   }
   50% {
-    box-shadow:
-      inset 0 0 15px rgba(255, 255, 255, 1),
-      inset 0 -4px 10px rgba(101, 101, 255, 0.9),
-      0 0 18px 5px rgba(101, 101, 255, 1),
-      0 0 35px 12px rgba(53, 53, 255, 0.95),
-      0 0 60px 20px rgba(18, 16, 224, 0.75),
-      0 0 85px 28px rgba(8, 5, 192, 0.45),
-      0 0 120px 40px rgba(4, 2, 115, 0.2);
-    filter: brightness(1.2);
+    filter: brightness(1.2) drop-shadow(0 0 14px rgba(101, 101, 255, 0.9));
   }
 }
 
-/* View Controls - Centered glass effect */
+/* View Controls - Layered glass effect */
 #view-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: var(--glass-bg);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.05) 100%
+    ),
+    var(--glass-bg);
   backdrop-filter: blur(var(--blur-amount));
   -webkit-backdrop-filter: blur(var(--blur-amount));
   border-bottom: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
 }
 
@@ -371,43 +443,159 @@ html, body {
   gap: 8px;
 }
 
-.view-btn, #refresh-btn {
+/* ============================================
+   BUTTON DEPTH SYSTEM
+   Consistent tactile button styling
+   ============================================ */
+#refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px; /* iOS minimum touch target */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 50%,
+      rgba(0, 0, 0, 0.05) 100%
+    );
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
+  touch-action: manipulation;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#refresh-btn:hover {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(53, 53, 255, 0.15) 0%,
+      rgba(53, 53, 255, 0.08) 50%,
+      rgba(18, 16, 224, 0.1) 100%
+    );
+  color: var(--accent-sapphire-light);
+  border-color: var(--sapphire-600);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 16px var(--glow-sapphire),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#refresh-btn:active {
+  transform: scale(0.92) translateY(0);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(18, 16, 224, 0.2) 0%,
+      rgba(53, 53, 255, 0.15) 100%
+    );
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 20px var(--sapphire-glow-strong);
+  transition-duration: 0.08s;
+}
+
+/* Music toggle button - Depth system */
+.music-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 42px;
   height: 38px;
-  background: rgba(255, 255, 255, 0.05);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 50%,
+      rgba(0, 0, 0, 0.05) 100%
+    );
   border: 1px solid var(--glass-border);
   border-radius: 10px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
-}
-
-.view-btn:hover, #refresh-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.view-btn:active, #refresh-btn:active {
-  transform: scale(0.95);
-}
-
-.view-btn.active {
-  background: rgba(14, 144, 56, 0.15);
-  border-color: var(--emerald-500);
-  color: var(--emerald-300);
+  transition:
+    all 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow:
-    0 0 8px var(--glow-emerald),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-#refresh-btn:hover {
-  color: var(--accent-sapphire-light);
-  box-shadow: 0 0 12px var(--glow-sapphire);
+.music-btn:hover {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(14, 144, 56, 0.15) 0%,
+      rgba(14, 144, 56, 0.08) 50%,
+      rgba(11, 115, 44, 0.1) 100%
+    );
+  color: var(--emerald-300);
+  border-color: var(--emerald-600);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 16px var(--emerald-glow),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.music-btn:active {
+  transform: scale(0.92) translateY(0);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(11, 115, 44, 0.2) 0%,
+      rgba(14, 144, 56, 0.15) 100%
+    );
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 20px var(--emerald-glow-strong);
+  transition-duration: 0.08s;
+}
+
+/* Music icon states */
+.music-btn .music-icon-off {
+  display: none;
+}
+
+.music-btn.muted .music-icon-on {
+  display: none;
+}
+
+.music-btn.muted .music-icon-off {
+  display: block;
+}
+
+/* Playing state - pulsing glow */
+.music-btn.playing {
+  background: rgba(14, 144, 56, 0.15);
+  border-color: var(--emerald-600);
+  color: var(--emerald-300);
+  animation: musicPulse 2s ease-in-out infinite;
+}
+
+.music-btn.playing:hover {
+  background: rgba(14, 144, 56, 0.25);
+}
+
+@keyframes musicPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--emerald-glow);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--emerald-glow-strong);
+  }
 }
 
 /* Views */
@@ -495,33 +683,75 @@ html, body {
   50% { opacity: 0.8; }
 }
 
-/* Session Card - Glassmorphism with neutral border */
+/* Session Card - Layered depth effect */
 .session-card {
   position: relative;
-  background: rgba(16, 20, 26, 0.92);
-  backdrop-filter: blur(var(--blur-amount));
-  -webkit-backdrop-filter: blur(var(--blur-amount));
+  background:
+    /* Inner highlight gradient */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.1) 100%
+    ),
+    /* Base color */
+    rgba(16, 20, 26, 0.98);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.2s ease,
+    box-shadow 0.3s ease;
   box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    var(--shadow-md),
+    /* Subtle inner shadow for depth */
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  /* Add touch-action for better iOS touch handling */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+/* Card inner glow layer - pseudo-element for performance */
+.session-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 15px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 100% 50% at 50% 0%,
+    rgba(53, 53, 255, 0.08) 0%,
+    transparent 60%
+  );
+  z-index: 1;
+}
+
+.session-card:hover::before {
+  opacity: 1;
 }
 
 .session-card:hover {
   border-color: var(--sapphire-600);
-  transform: translateY(-4px);
+  transform: translateY(-6px) scale(1.01);
   box-shadow:
     var(--shadow-lg),
-    0 0 16px var(--sapphire-glow),
+    0 0 20px var(--sapphire-glow),
+    0 12px 40px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 var(--glass-highlight);
 }
 
 .session-card:active {
-  transform: scale(0.98) translateY(-2px);
+  transform: scale(0.97) translateY(-2px);
+  transition-duration: 0.1s;
 }
 
 /* Active session - Ruby glow to indicate activity */
@@ -600,29 +830,81 @@ html, body {
   text-align: center;
 }
 
+/* ============================================
+   STATUS BADGES - Pill-shaped with depth
+   ============================================ */
 .session-card-badge {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(0, 0, 0, 0.05) 100%
+    );
   color: var(--text-secondary);
   border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+/* Inner shine effect */
+.session-card-badge::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
 }
 
 .session-card-badge.working {
-  background: linear-gradient(135deg, rgba(14, 144, 56, 0.25), rgba(14, 144, 56, 0.1));
+  background:
+    linear-gradient(
+      180deg,
+      rgba(14, 144, 56, 0.3) 0%,
+      rgba(14, 144, 56, 0.15) 50%,
+      rgba(11, 115, 44, 0.2) 100%
+    );
   color: var(--emerald-300);
   border-color: var(--emerald-600);
-  box-shadow: 0 0 12px var(--emerald-glow);
+  box-shadow:
+    inset 0 1px 0 rgba(80, 224, 128, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    0 0 16px var(--emerald-glow),
+    0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .session-card-badge.waiting {
-  background: linear-gradient(135deg, rgba(15, 82, 186, 0.2), rgba(15, 82, 186, 0.1));
+  background:
+    linear-gradient(
+      180deg,
+      rgba(53, 53, 255, 0.25) 0%,
+      rgba(18, 16, 224, 0.15) 50%,
+      rgba(4, 2, 115, 0.2) 100%
+    );
   color: var(--sapphire-300);
   border-color: var(--sapphire-600);
+  box-shadow:
+    inset 0 1px 0 rgba(149, 149, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    0 0 12px var(--sapphire-glow),
+    0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .session-card-path {
@@ -638,10 +920,29 @@ html, body {
   text-shadow: 0 0 8px rgba(15, 82, 186, 0.3);
 }
 
+/* ============================================
+   TERMINAL PREVIEW - Inset display with depth
+   ============================================ */
 .session-card-preview {
   height: 100px;
   padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.5);
+  background:
+    /* Scanline overlay for CRT feel */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    ),
+    /* Inner vignette */
+    radial-gradient(
+      ellipse 80% 60% at 50% 50%,
+      rgba(0, 0, 0, 0.3) 0%,
+      rgba(0, 0, 0, 0.5) 100%
+    ),
+    /* Base dark */
+    rgba(8, 10, 14, 0.95);
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 12px;
   line-height: 1.6;
@@ -649,9 +950,30 @@ html, body {
   overflow: hidden;
   white-space: pre-wrap;
   word-break: break-word;
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid rgba(0, 0, 0, 0.4);
   border-bottom: 1px solid var(--glass-border);
   position: relative;
+  /* Inset shadow for recessed look */
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Top edge shadow line */
+.session-card-preview::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.5) 20%,
+    rgba(0, 0, 0, 0.5) 80%,
+    transparent 100%
+  );
 }
 
 /* Fade out at bottom of preview */
@@ -661,8 +983,12 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 30px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+  height: 35px;
+  background: linear-gradient(
+    transparent 0%,
+    rgba(8, 10, 14, 0.7) 60%,
+    rgba(8, 10, 14, 0.95) 100%
+  );
   pointer-events: none;
 }
 
@@ -677,6 +1003,9 @@ html, body {
   margin-bottom: 2px;
 }
 
+/* ============================================
+   CARD FOOTER - Layered with subtle depth
+   ============================================ */
 .session-card-footer {
   display: flex;
   flex-direction: column;
@@ -684,7 +1013,30 @@ html, body {
   justify-content: center;
   gap: 10px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.01) 0%,
+      rgba(255, 255, 255, 0.03) 50%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+  position: relative;
+}
+
+/* Subtle top separator */
+.session-card-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
 }
 
 .session-card-time {
@@ -694,6 +1046,7 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .session-card-actions {
@@ -702,40 +1055,115 @@ html, body {
   gap: 8px;
 }
 
+/* ============================================
+   CARD ACTION BUTTONS - Tactile 3D depth
+   ============================================ */
 .card-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 14px;
+  min-height: 44px; /* iOS minimum touch target */
+  min-width: 44px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(0, 0, 0, 0.05) 100%
+    );
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  transition:
+    background 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: rgba(45, 139, 87, 0.3);
+  touch-action: manipulation;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* Button shine highlight */
+.card-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  opacity: 0.8;
 }
 
 .card-action-btn:hover {
-  background: rgba(15, 82, 186, 0.15);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(53, 53, 255, 0.2) 0%,
+      rgba(18, 16, 224, 0.12) 50%,
+      rgba(4, 2, 115, 0.15) 100%
+    );
   border-color: var(--sapphire-500);
   color: var(--sapphire-300);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow:
-    0 4px 12px var(--sapphire-glow),
-    inset 0 1px 0 var(--glass-highlight);
+    inset 0 1px 0 rgba(149, 149, 255, 0.2),
+    0 0 16px var(--sapphire-glow),
+    0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
 .card-action-btn:active {
-  background: linear-gradient(135deg, var(--sapphire-800), var(--sapphire-400));
+  background:
+    linear-gradient(
+      180deg,
+      rgba(4, 2, 115, 0.3) 0%,
+      rgba(18, 16, 224, 0.25) 50%,
+      rgba(53, 53, 255, 0.2) 100%
+    );
+  border-color: var(--sapphire-400);
+  color: white;
+  transform: scale(0.94) translateY(0);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    0 0 24px var(--sapphire-glow-strong);
+  transition-duration: 0.08s;
+}
+
+/* Upload button on card - compact icon-only style */
+.card-action-btn.card-upload-btn {
+  padding: 8px 10px;
+  background: rgba(14, 144, 56, 0.15);
+  border-color: var(--emerald-600);
+  color: var(--emerald-300);
+}
+
+.card-action-btn.card-upload-btn:hover {
+  background: rgba(14, 144, 56, 0.25);
+  border-color: var(--emerald-500);
+  color: var(--emerald-200);
+  box-shadow: 0 4px 12px var(--emerald-glow);
+}
+
+.card-action-btn.card-upload-btn:active {
+  background: linear-gradient(135deg, var(--emerald-700), var(--emerald-500));
   border-color: transparent;
   color: white;
-  transform: scale(0.92);
-  box-shadow: 0 0 20px var(--sapphire-glow-strong);
+  box-shadow: 0 0 20px var(--emerald-glow-strong);
 }
 
 /* Primary action button - more prominent */
@@ -772,56 +1200,15 @@ html, body {
   font-size: 16px;
 }
 
-/* Empty state - "No Active Links" with Ruby & Sapphire gradient stroke */
+/* Empty state - "No Active Links" - simplified for iOS performance */
 #agent-count {
   font-weight: 700;
   font-size: 18px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #2a3a30;
-  text-shadow:
-    /* Emerald stroke - all sides */
-    -1px -1px 0 var(--accent-emerald),
-    -1px 0 0 var(--accent-emerald),
-    -1px 1px 0 var(--accent-emerald),
-    1px -1px 0 var(--accent-emerald),
-    1px 0 0 var(--accent-emerald),
-    1px 1px 0 var(--accent-emerald),
-    0 -1px 0 var(--accent-emerald-light),
-    0 1px 0 var(--accent-emerald-light),
-    /* Outer glow */
-    0 0 8px var(--glow-emerald),
-    0 0 12px var(--glow-emerald);
-  animation: emeraldShimmer 4s ease-in-out infinite;
-}
-
-@keyframes emeraldShimmer {
-  0%, 100% {
-    text-shadow:
-      -1px -1px 0 var(--accent-emerald),
-      -1px 0 0 var(--accent-emerald),
-      -1px 1px 0 var(--accent-emerald),
-      1px -1px 0 var(--accent-emerald),
-      1px 0 0 var(--accent-emerald),
-      1px 1px 0 var(--accent-emerald),
-      0 -1px 0 var(--accent-emerald-light),
-      0 1px 0 var(--accent-emerald-light),
-      0 0 8px var(--glow-emerald),
-      0 0 12px var(--glow-emerald);
-  }
-  50% {
-    text-shadow:
-      -1px -1px 0 var(--emerald-300),
-      -1px 0 0 var(--emerald-300),
-      -1px 1px 0 var(--emerald-300),
-      1px -1px 0 var(--emerald-300),
-      1px 0 0 var(--emerald-300),
-      1px 1px 0 var(--emerald-300),
-      0 -1px 0 var(--emerald-200),
-      0 1px 0 var(--emerald-200),
-      0 0 12px var(--glow-emerald),
-      0 0 20px var(--emerald-glow-strong);
-  }
+  color: var(--emerald-300);
+  text-shadow: 0 0 10px var(--glow-emerald);
+  /* Removed heavy animation - static glow is sufficient */
 }
 
 /* Hint text below "No Active Links" */
@@ -1026,14 +1413,54 @@ html, body {
 
 /* Split View */
 #split-view {
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+#split-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+#split-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#split-back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+#split-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 #split-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  height: 100%;
+  flex: 1;
+  padding: 8px;
+  overflow: hidden;
 }
 
 .split-panel {
@@ -1124,15 +1551,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 38px;
+  width: 44px;
+  height: 44px; /* iOS minimum touch target */
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   border-radius: 10px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  transition: background 0.15s ease, transform 0.1s ease;
+  touch-action: manipulation;
 }
 
 #back-btn:hover, #expand-btn:hover {
@@ -1365,7 +1792,7 @@ html, body {
   100% { transform: scale(1); }
 }
 
-.view-btn:active, #refresh-btn:active, #back-btn:active, #expand-btn:active {
+#refresh-btn:active, #back-btn:active, #expand-btn:active {
   animation: buttonSpring 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1434,9 +1861,9 @@ html, body {
 
 /* Glow transition smoothing for interactive elements */
 .session-card,
-.view-btn,
 .card-action-btn,
 .header-ctrl-btn,
+#refresh-btn,
 #back-btn,
 #expand-btn,
 #keyboard-toggle {
@@ -1502,17 +1929,26 @@ html, body {
   box-shadow: 0 0 16px var(--emerald-glow-strong);
 }
 
-/* Hidden input for iOS keyboard */
+/* Hidden input for iOS keyboard - improved for Safari compatibility */
 #hidden-input {
   position: fixed;
   left: 0;
-  bottom: 0;
+  bottom: env(safe-area-inset-bottom, 0); /* Respect notch/Dynamic Island */
   width: 100%;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  height: 44px; /* iOS minimum touch target */
+  opacity: 0.01; /* Nearly invisible but not hidden from accessibility */
   font-size: 16px; /* Prevents iOS zoom */
-  transform: translateY(100%);
+  background: transparent;
+  border: none;
+  outline: none;
+  z-index: calc(var(--z-base) * -1);
+  /* Remove transform - can interfere with iOS focus */
+}
+
+/* When keyboard is visible, bring input to normal z-index */
+body.keyboard-visible #hidden-input {
+  z-index: var(--z-keyboard);
+  bottom: 0; /* Keyboard handles safe area when visible */
 }
 
 /* Fullscreen mode */
@@ -1541,7 +1977,7 @@ body.fullscreen #focus-header {
     padding: 6px 12px;
   }
 
-  .view-btn, #refresh-btn {
+  #refresh-btn {
     height: 32px;
   }
 
@@ -1623,7 +2059,7 @@ body.keyboard-visible #focus-terminal {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  z-index: 1000;
+  z-index: var(--z-toast);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -1738,7 +2174,7 @@ body.keyboard-visible #focus-terminal {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 100;
+  z-index: var(--z-modal-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1996,4 +2432,276 @@ body.keyboard-visible #focus-terminal {
 .folder-empty .hint {
   font-size: 12px;
   opacity: 0.7;
+}
+
+/* ============================================
+   ACCESSIBILITY: Reduced Motion Support
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  /* Explicitly disable all motion-based effects */
+  .session-card,
+  .view.active,
+  #focus-view.active,
+  .status-gem,
+  .activity-dot,
+  .session-card-badge,
+  .music-btn.playing,
+  .status-badge.connecting,
+  #pull-refresh-icon,
+  .card-action-btn,
+  .header-ctrl-btn {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Keep functional visual changes but make them instant */
+  .session-card:hover,
+  .card-action-btn:hover,
+  .card-action-btn:active {
+    transition: none;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY: Focus States
+   ============================================ */
+#refresh-btn:focus-visible,
+#folder-btn:focus-visible,
+#back-btn:focus-visible,
+#expand-btn:focus-visible,
+.card-action-btn:focus-visible,
+.header-ctrl-btn:focus-visible,
+#keyboard-toggle:focus-visible,
+#create-session-btn:focus-visible,
+.folder-item:focus-visible,
+.panel-close:focus-visible {
+  outline: 2px solid var(--emerald-400);
+  outline-offset: 2px;
+}
+
+#new-session-name:focus-visible {
+  outline: none; /* Already has box-shadow focus indicator */
+}
+
+/* Session card focus for keyboard navigation */
+.session-card:focus-visible {
+  outline: 2px solid var(--sapphire-400);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   INACTIVE PROJECT CARDS
+   ============================================ */
+
+/* Inactive card - dimmer, subtle styling */
+.session-card.inactive {
+  background: rgba(12, 14, 18, 0.85);
+  border-color: rgba(60, 70, 85, 0.4);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.session-card.inactive:hover {
+  border-color: var(--emerald-700);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 12px var(--emerald-glow),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+.session-card.inactive .session-card-header {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.session-card.inactive .session-card-name {
+  color: var(--text-secondary);
+}
+
+/* Offline activity dot */
+.activity-dot.offline {
+  background: var(--text-dim);
+  box-shadow: none;
+}
+
+/* Offline badge */
+.session-card-badge.offline {
+  background: rgba(60, 70, 85, 0.3);
+  color: var(--text-muted);
+  border-color: rgba(80, 90, 110, 0.4);
+  box-shadow: none;
+}
+
+/* Inactive preview hint */
+.session-card-preview.inactive-hint {
+  height: auto;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.session-card-preview.inactive-hint::after {
+  display: none; /* Remove fade gradient */
+}
+
+/* Inactive card footer */
+.session-card.inactive .session-card-time {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Start button - emerald theme */
+.session-card.inactive .card-action-btn[data-action="start"] {
+  background: rgba(14, 144, 56, 0.15);
+  border-color: var(--emerald-600);
+  color: var(--emerald-300);
+}
+
+.session-card.inactive .card-action-btn[data-action="start"]:hover {
+  background: rgba(14, 144, 56, 0.25);
+  border-color: var(--emerald-500);
+  color: var(--emerald-200);
+  box-shadow: 0 4px 12px var(--emerald-glow);
+}
+
+.session-card.inactive .card-action-btn[data-action="start"]:active {
+  background: linear-gradient(135deg, var(--emerald-700), var(--emerald-500));
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 0 20px var(--emerald-glow-strong);
+}
+
+/* Quick start button (skip permissions) - ruby theme for danger */
+.session-card.inactive .card-action-btn[data-action="start-skip"] {
+  background: rgba(165, 2, 2, 0.15);
+  border-color: var(--ruby-700);
+  color: var(--ruby-300);
+}
+
+.session-card.inactive .card-action-btn[data-action="start-skip"]:hover {
+  background: rgba(165, 2, 2, 0.25);
+  border-color: var(--ruby-600);
+  color: var(--ruby-200);
+  box-shadow: 0 4px 12px var(--ruby-glow);
+}
+
+.session-card.inactive .card-action-btn[data-action="start-skip"]:active {
+  background: linear-gradient(135deg, var(--ruby-700), var(--ruby-500));
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 0 20px var(--ruby-glow-strong);
+}
+
+/* ============================================
+   CLAUDE PROJECT DETECTION
+   Projects with .claude/ directory are highlighted
+   Uses amber/gold theme to distinguish from other gems
+   ============================================ */
+
+/* Claude-specific color tokens */
+:root {
+  --claude-950: #1a1000;
+  --claude-900: #2d1a00;
+  --claude-800: #4a2a00;
+  --claude-700: #6b3d00;
+  --claude-600: #8c5000;
+  --claude-500: #ad6800;
+  --claude-400: #cc8000;
+  --claude-300: #e6a030;
+  --claude-200: #ffba50;
+  --claude-100: #ffd080;
+  --claude-glow: rgba(204, 128, 0, 0.6);
+  --claude-glow-strong: rgba(230, 160, 48, 0.85);
+}
+
+/* Claude badge - small indicator next to project name */
+.claude-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--claude-800), var(--claude-900));
+  color: var(--claude-200);
+  border: 1px solid var(--claude-600);
+  box-shadow: 0 0 8px var(--claude-glow);
+  white-space: nowrap;
+  margin-left: 6px;
+}
+
+/* Claude project card - elevated styling */
+.session-card.inactive.claude-project {
+  background: rgba(16, 14, 10, 0.9);
+  border-color: var(--claude-700);
+  box-shadow:
+    var(--shadow-md),
+    0 0 8px var(--claude-glow),
+    inset 0 1px 0 rgba(255, 200, 100, 0.05);
+}
+
+.session-card.inactive.claude-project:hover {
+  border-color: var(--claude-500);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 16px var(--claude-glow-strong),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+/* Claude activity dot - amber glow */
+.activity-dot.claude {
+  background: var(--claude-500);
+  box-shadow: 0 0 6px var(--claude-glow);
+  animation: claudeGlow 3s ease-in-out infinite;
+}
+
+@keyframes claudeGlow {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--claude-glow);
+    opacity: 0.8;
+  }
+  50% {
+    box-shadow: 0 0 10px var(--claude-glow-strong);
+    opacity: 1;
+  }
+}
+
+/* Claude status badge - "Ready" state */
+.session-card-badge.claude {
+  background: linear-gradient(135deg, var(--claude-800), var(--claude-900));
+  color: var(--claude-200);
+  border-color: var(--claude-600);
+  box-shadow: 0 0 10px var(--claude-glow);
+}
+
+/* Claude project card name - slightly highlighted */
+.session-card.inactive.claude-project .session-card-name {
+  color: var(--claude-100);
+}
+
+/* Claude project preview hint */
+.session-card.inactive.claude-project .session-card-preview.inactive-hint {
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--claude-300);
+}
+
+/* Claude project time indicator */
+.session-card.inactive.claude-project .session-card-time {
+  color: var(--claude-300);
+  opacity: 1;
 }

@@ -35,6 +35,16 @@ const httpsOptions = {
 // Health check constants
 const SESSION_TIMEOUT_MS = 30000; // Consider session dead if no update in 30 seconds
 
+// Auth session cleanup constants (prevents memory leak from growing activeSessions Map)
+const AUTH_SESSION_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+const AUTH_SESSION_MAX_IDLE = 24 * 60 * 60 * 1000; // 24 hours
+
+// Pipe buffer protection (prevents DoS from unbounded buffer growth)
+const MAX_PIPE_BUFFER_SIZE = 1024 * 1024; // 1MB
+
+// Track spawned launcher processes for cleanup on shutdown
+const spawnedLaunchers = new Set();
+
 // List available sessions from registry (with health filtering)
 function listSessions(includePreview = true) {
   try {
@@ -231,7 +241,7 @@ function handleFileUpload(ws, msg, activeSessionId) {
 // Base directory for new projects
 const PROJECTS_BASE_DIR = join(homedir(), 'Documents', 'Code');
 
-// List folders in Documents\Code
+// List folders in Documents\Code (legacy, kept for compatibility)
 function listCodeFolders() {
   try {
     if (!existsSync(PROJECTS_BASE_DIR)) {
@@ -260,6 +270,74 @@ function listCodeFolders() {
     return folders;
   } catch (err) {
     console.error('[Folders] Error listing folders:', err.message);
+    return [];
+  }
+}
+
+// Check if a directory is a Claude Code project (has .claude/ folder)
+function isClaudeProject(projectPath) {
+  try {
+    const claudeDir = join(projectPath, '.claude');
+    return existsSync(claudeDir);
+  } catch {
+    return false;
+  }
+}
+
+// List all projects (unified view: folders merged with session data)
+// Detects Claude Code projects (those with .claude/ directory)
+function listProjects() {
+  try {
+    if (!existsSync(PROJECTS_BASE_DIR)) {
+      return [];
+    }
+
+    const entries = readdirSync(PROJECTS_BASE_DIR, { withFileTypes: true });
+    const activeSessions = listSessions(true); // Include preview
+    const sessionMap = new Map(activeSessions.map(s => [s.id, s]));
+
+    const projects = entries
+      .filter(entry => entry.isDirectory())
+      .filter(entry => !entry.name.startsWith('.')) // Skip hidden folders
+      .map(entry => {
+        const session = sessionMap.get(entry.name);
+        const projectPath = join(PROJECTS_BASE_DIR, entry.name);
+        const isClaude = isClaudeProject(projectPath);
+
+        return {
+          id: entry.name,
+          cwd: session?.cwd || projectPath,
+          isActive: !!session,
+          isClaudeProject: isClaude, // Flag for Claude Code projects
+          // Include session data if active
+          pid: session?.pid || null,
+          started: session?.started || null,
+          lastSeen: session?.lastSeen || null,
+          preview: session?.preview || '',
+          clientCount: session?.clientCount || 0
+        };
+      })
+      .sort((a, b) => {
+        // Active projects first
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        // Then Claude projects before regular folders
+        if (a.isClaudeProject && !b.isClaudeProject) return -1;
+        if (!a.isClaudeProject && b.isClaudeProject) return 1;
+        // Then by name
+        return a.id.localeCompare(b.id);
+      });
+
+    // Log discovery stats periodically (not every call to avoid spam)
+    const claudeCount = projects.filter(p => p.isClaudeProject).length;
+    const activeCount = projects.filter(p => p.isActive).length;
+    if (claudeCount > 0 || activeCount > 0) {
+      console.log(`[Projects] Found ${projects.length} total, ${claudeCount} Claude projects, ${activeCount} active`);
+    }
+
+    return projects;
+  } catch (err) {
+    console.error('[Projects] Error listing projects:', err.message);
     return [];
   }
 }
@@ -315,16 +393,24 @@ function handleStartFolderSession(ws, msg) {
 
   try {
     // Spawn detached so it survives if relay restarts
+    // Use windowsHide to prevent console window from appearing
     const child = spawn('node', launcherArgs, {
       detached: true,
       stdio: 'ignore',
-      cwd: __dirname
+      cwd: __dirname,
+      windowsHide: true
     });
 
     // Unref so parent doesn't wait for child
     child.unref();
 
-    console.log(`[Session] Spawned launcher for ${safeName} (PID: ${child.pid})${skipPermissions ? ' [skip-permissions]' : ''}`);
+    // Track the PID for cleanup on shutdown
+    if (child.pid) {
+      spawnedLaunchers.add(child.pid);
+      console.log(`[Session] Spawned launcher for ${safeName} (PID: ${child.pid}, tracking ${spawnedLaunchers.size} launchers)${skipPermissions ? ' [skip-permissions]' : ''}`);
+    } else {
+      console.log(`[Session] Spawned launcher for ${safeName}${skipPermissions ? ' [skip-permissions]' : ''}`);
+    }
 
     ws.send(JSON.stringify({
       type: 'start_folder_session_result',
@@ -406,16 +492,24 @@ function handleCreateSession(ws, msg) {
 
   try {
     // Spawn detached so it survives if relay restarts
+    // Use windowsHide to prevent console window from appearing
     const child = spawn('node', [launcherPath, safeName, projectDir], {
       detached: true,
       stdio: 'ignore',
-      cwd: __dirname
+      cwd: __dirname,
+      windowsHide: true
     });
 
     // Unref so parent doesn't wait for child
     child.unref();
 
-    console.log(`[Session] Spawned launcher for ${safeName} (PID: ${child.pid})`);
+    // Track the PID for cleanup on shutdown
+    if (child.pid) {
+      spawnedLaunchers.add(child.pid);
+      console.log(`[Session] Spawned launcher for ${safeName} (PID: ${child.pid}, tracking ${spawnedLaunchers.size} launchers)`);
+    } else {
+      console.log(`[Session] Spawned launcher for ${safeName}`);
+    }
 
     ws.send(JSON.stringify({
       type: 'create_session_result',
@@ -439,6 +533,21 @@ import crypto from 'crypto';
 const SESSION_COOKIE_NAME = 'relay_session';
 const SESSION_MAX_AGE = 24 * 60 * 60; // 24 hours in seconds
 const activeSessions = new Map(); // sessionToken -> { created, lastSeen }
+
+// Periodic cleanup of expired auth sessions (prevents memory leak)
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [token, session] of activeSessions.entries()) {
+    if (now - session.lastSeen > AUTH_SESSION_MAX_IDLE) {
+      activeSessions.delete(token);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`[Auth] Cleaned ${cleaned} expired sessions, ${activeSessions.size} active`);
+  }
+}, AUTH_SESSION_CLEANUP_INTERVAL);
 
 // Parse cookies from request
 function parseCookies(req) {
@@ -656,6 +765,25 @@ wss.on('connection', (ws, req) => {
   const pipeSockets = new Map();
   let activeSessionId = null;
 
+  // Rate limiting state (prevents flooding with requests)
+  let messageCount = 0;
+  let lastRateReset = Date.now();
+  const MAX_MESSAGES_PER_SECOND = 10;
+
+  // WebSocket heartbeat to detect stale connections
+  let isAlive = true;
+  ws.on('pong', () => { isAlive = true; });
+
+  const wsPingInterval = setInterval(() => {
+    if (!isAlive) {
+      console.log('[WS] Client heartbeat timeout, terminating');
+      clearInterval(wsPingInterval);
+      return ws.terminate();
+    }
+    isAlive = false;
+    ws.ping();
+  }, 30000); // Ping every 30 seconds
+
   // Send available sessions
   const sessions = listSessions();
   ws.send(JSON.stringify({ type: 'sessions', sessions }));
@@ -663,6 +791,20 @@ wss.on('connection', (ws, req) => {
 
   // Handle messages from client
   ws.on('message', (message) => {
+    // Rate limiting check
+    const now = Date.now();
+    if (now - lastRateReset >= 1000) {
+      messageCount = 0;
+      lastRateReset = now;
+    }
+
+    messageCount++;
+    if (messageCount > MAX_MESSAGES_PER_SECOND) {
+      console.warn(`[WS] Rate limit exceeded for client`);
+      ws.send(JSON.stringify({ type: 'error', message: 'Rate limit exceeded' }));
+      return; // Drop the message, don't close connection
+    }
+
     try {
       const msg = JSON.parse(message.toString());
 
@@ -684,11 +826,11 @@ wss.on('connection', (ws, req) => {
         case 'input':
         case 'control':
         case 'resize':
-          // Forward to active session's pipe
+          // Forward to active session's pipe with error handling
           if (activeSessionId) {
             const conn = pipeSockets.get(activeSessionId);
-            if (conn && conn.pipe && !conn.pipe.destroyed) {
-              conn.pipe.write(JSON.stringify(msg) + '\n');
+            if (conn && conn.connected) {
+              writeToPipe(conn, msg);
             }
           }
           break;
@@ -703,8 +845,14 @@ wss.on('connection', (ws, req) => {
           handleCreateSession(ws, msg);
           break;
 
+        case 'list_projects':
+          // List all projects (folders + active session data)
+          const projects = listProjects();
+          ws.send(JSON.stringify({ type: 'projects', projects }));
+          break;
+
         case 'list_folders':
-          // List folders in Documents\Code
+          // List folders in Documents\Code (legacy)
           const folders = listCodeFolders();
           ws.send(JSON.stringify({ type: 'folders', folders }));
           break;
@@ -728,9 +876,9 @@ wss.on('connection', (ws, req) => {
     if (pipeSockets.has(sessionId)) {
       activeSessionId = sessionId;
       console.log(`[WS] Switched to existing session: ${sessionId}`);
-      // Resend scrollback for the session
+      // Resend status for the session
       const conn = pipeSockets.get(sessionId);
-      if (conn) {
+      if (conn && conn.connected) {
         ws.send(JSON.stringify({ type: 'status', state: 'connected', sessionId }));
       }
       return;
@@ -744,24 +892,62 @@ wss.on('connection', (ws, req) => {
 
     console.log(`[WS] Connecting to session: ${sessionId}`);
 
-    // Connect to the named pipe
+    // Connect to the named pipe with timeout
+    const PIPE_CONNECT_TIMEOUT = 10000; // 10 seconds
     const pipeSocket = net.connect(session.pipe);
-    let buffer = '';
+    let connectTimeout = null;
 
-    const conn = { pipe: pipeSocket, buffer: '' };
+    const conn = { pipe: pipeSocket, buffer: '', connected: false, pingInterval: null };
     pipeSockets.set(sessionId, conn);
     activeSessionId = sessionId;
 
+    // Set connection timeout
+    connectTimeout = setTimeout(() => {
+      if (!conn.connected) {
+        console.error(`[Pipe] Connection timeout for ${sessionId}`);
+        pipeSocket.destroy();
+        pipeSockets.delete(sessionId);
+        ws.send(JSON.stringify({ type: 'error', message: 'Connection timeout', sessionId }));
+        ws.send(JSON.stringify({ type: 'status', state: 'disconnected', reason: 'Connection timeout', sessionId }));
+      }
+    }, PIPE_CONNECT_TIMEOUT);
+
     pipeSocket.on('connect', () => {
+      clearTimeout(connectTimeout);
+      conn.connected = true;
       console.log(`[Pipe] Connected to ${sessionId}`);
 
       // Send resize immediately
-      const resizeMsg = { type: 'resize', cols: 120, rows: 30 };
-      pipeSocket.write(JSON.stringify(resizeMsg) + '\n');
+      writeToPipe(conn, { type: 'resize', cols: 120, rows: 30 });
+
+      // Start heartbeat pings to session (every 15 seconds)
+      conn.pingInterval = setInterval(() => {
+        if (conn.connected && !conn.pipe.destroyed) {
+          writeToPipe(conn, { type: 'ping' });
+        }
+      }, 15000);
     });
 
     pipeSocket.on('data', (data) => {
       conn.buffer += data.toString();
+
+      // Prevent unbounded buffer growth (DoS protection)
+      if (conn.buffer.length > MAX_PIPE_BUFFER_SIZE) {
+        console.error(`[Pipe] Buffer exceeded ${MAX_PIPE_BUFFER_SIZE} bytes for ${sessionId}, disconnecting`);
+        pipeSocket.destroy();
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Buffer overflow - connection reset',
+          sessionId
+        }));
+        ws.send(JSON.stringify({
+          type: 'status',
+          state: 'disconnected',
+          reason: 'Buffer overflow',
+          sessionId
+        }));
+        return;
+      }
 
       // Process complete JSON messages (newline-delimited)
       const lines = conn.buffer.split('\n');
@@ -771,6 +957,12 @@ wss.on('connection', (ws, req) => {
         if (!line.trim()) continue;
         try {
           const msg = JSON.parse(line);
+
+          // Handle pong (heartbeat response) - don't forward to client
+          if (msg.type === 'pong') {
+            continue;
+          }
+
           // Always forward with sessionId so client can route appropriately
           msg.sessionId = sessionId;
 
@@ -788,20 +980,68 @@ wss.on('connection', (ws, req) => {
     });
 
     pipeSocket.on('error', (err) => {
+      // Clear connect timeout to prevent double-handling
+      if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
+      }
+
       console.error(`[Pipe] Error for ${sessionId}: ${err.message}`);
+      cleanupPipeConnection(sessionId, conn);
       ws.send(JSON.stringify({ type: 'error', message: `Pipe error: ${err.message}`, sessionId }));
+      ws.send(JSON.stringify({ type: 'status', state: 'disconnected', reason: err.message, sessionId }));
     });
 
     pipeSocket.on('close', () => {
+      // Clear connect timeout to prevent double-handling
+      if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
+      }
+
       console.log(`[Pipe] Disconnected from ${sessionId}`);
-      pipeSockets.delete(sessionId);
+      cleanupPipeConnection(sessionId, conn);
       ws.send(JSON.stringify({ type: 'status', state: 'disconnected', reason: 'Session ended', sessionId }));
     });
   }
 
+  // Safely write to pipe with error handling
+  function writeToPipe(conn, msg) {
+    if (!conn || !conn.pipe || conn.pipe.destroyed) {
+      return false;
+    }
+    try {
+      const success = conn.pipe.write(JSON.stringify(msg) + '\n');
+      // Handle backpressure - if write returns false, buffer is full
+      if (!success) {
+        console.warn('[Pipe] Write buffer full, message may be delayed');
+      }
+      return success;
+    } catch (err) {
+      console.error('[Pipe] Write error:', err.message);
+      return false;
+    }
+  }
+
+  // Clean up pipe connection resources
+  function cleanupPipeConnection(sessionId, conn) {
+    if (conn.pingInterval) {
+      clearInterval(conn.pingInterval);
+      conn.pingInterval = null;
+    }
+    conn.connected = false;
+    pipeSockets.delete(sessionId);
+  }
+
   // Cleanup all connections
   function cleanup() {
+    // Clear WebSocket ping interval
+    if (wsPingInterval) {
+      clearInterval(wsPingInterval);
+    }
+
     for (const [sessionId, conn] of pipeSockets) {
+      cleanupPipeConnection(sessionId, conn);
       if (conn.pipe) {
         conn.pipe.destroy();
       }
@@ -823,25 +1063,72 @@ wss.on('connection', (ws, req) => {
 
 // Handle server errors
 server.on('error', (err) => {
-  console.error('[Server] Error:', err.message);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[Server] FATAL: Port ${config.PORT} is already in use`);
+    console.error('[Server] Another instance may be running. Exiting.');
+    process.exit(1);
+  } else if (err.code === 'EACCES') {
+    console.error(`[Server] FATAL: Permission denied for port ${config.PORT}`);
+    process.exit(1);
+  } else {
+    console.error('[Server] Error:', err.message);
+  }
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n[Server] Shutting down...');
+
+  // Close all WebSocket connections
   wss.clients.forEach(ws => ws.close());
+
+  // Attempt to kill spawned launchers (best effort)
+  for (const pid of spawnedLaunchers) {
+    try {
+      process.kill(pid, 'SIGTERM');
+      console.log(`[Server] Sent SIGTERM to launcher PID ${pid}`);
+    } catch (err) {
+      // Process may have already exited
+    }
+  }
+  spawnedLaunchers.clear();
+
   server.close(() => {
     console.log('[Server] Closed');
     process.exit(0);
   });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('[Server] Forced exit after timeout');
+    process.exit(1);
+  }, 5000);
 });
 
 process.on('SIGTERM', () => {
   console.log('\n[Server] Received SIGTERM, shutting down...');
+
+  // Close all WebSocket connections
   wss.clients.forEach(ws => ws.close());
+
+  // Attempt to kill spawned launchers (best effort)
+  for (const pid of spawnedLaunchers) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch (err) {
+      // Process may have already exited
+    }
+  }
+  spawnedLaunchers.clear();
+
   server.close(() => {
     process.exit(0);
   });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  setTimeout(() => {
+    process.exit(1);
+  }, 5000);
 });
 
 // Start server
