@@ -49,3 +49,4 @@ vertical-canvas-windows/
 # Environment variables (sensitive - contains auth tokens)
 .env
 server/.env
+agent/.env
