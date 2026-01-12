@@ -4,10 +4,11 @@ import { readFileSync, existsSync, readdirSync, unlinkSync, writeFileSync, mkdir
 import { WebSocketServer } from 'ws';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { homedir } from 'os';
+import { homedir, hostname } from 'os';
 import net from 'net';
 import { spawn, execSync } from 'child_process';
 import config from './config.js';
+import { MachineRegistry } from './machineRegistry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const registryDir = join(homedir(), '.claude-relay', 'sessions');
@@ -44,6 +45,10 @@ const MAX_PIPE_BUFFER_SIZE = 1024 * 1024; // 1MB
 
 // Track spawned launcher processes for cleanup on shutdown
 const spawnedLaunchers = new Set();
+
+// Machine registry for multi-machine support
+const machineRegistry = new MachineRegistry();
+const LOCAL_MACHINE_ID = machineRegistry.LOCAL_MACHINE_ID;
 
 // List available sessions from registry (with health filtering)
 function listSessions(includePreview = true) {
@@ -741,10 +746,99 @@ const server = createServer(httpsOptions, (req, res) => {
   }
 });
 
-// Create WebSocket server
-const wss = new WebSocketServer({ server });
+// Create WebSocket server for clients
+const wss = new WebSocketServer({ noServer: true });
 
-// Handle WebSocket connections
+// Create WebSocket server for agents
+const wssAgent = new WebSocketServer({ noServer: true });
+
+// Handle HTTP upgrade - route to client or agent WebSocket server
+server.on('upgrade', (req, socket, head) => {
+  const url = new URL(req.url, `https://${req.headers.host}`);
+  let pathname = url.pathname;
+
+  // Handle /cnm prefix for Cloudflare routing
+  if (pathname.startsWith('/cnm/')) {
+    pathname = pathname.substring(4);
+  }
+
+  if (pathname === '/agent' || pathname === '/agent/') {
+    // Agent connection - verify agent token
+    const agentToken = url.searchParams.get('agentToken');
+    if (agentToken !== config.AGENT_TOKEN) {
+      console.log('[Agent] Invalid agent token');
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    wssAgent.handleUpgrade(req, socket, head, (ws) => {
+      wssAgent.emit('connection', ws, req);
+    });
+  } else {
+    // Client connection
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  }
+});
+
+// Handle agent connections
+wssAgent.on('connection', (ws, req) => {
+  const url = new URL(req.url, `https://${req.headers.host}`);
+  const machineId = url.searchParams.get('machineId') || 'unknown';
+  console.log(`[Agent] New connection from ${machineId}`);
+
+  let registeredMachineId = null;
+
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+
+      switch (msg.type) {
+        case 'agent:register':
+          const result = machineRegistry.registerAgent(msg, ws);
+          if (result.success) {
+            registeredMachineId = msg.machineId;
+            ws.send(JSON.stringify({ type: 'hub:registered', success: true, machineId: msg.machineId }));
+          } else {
+            ws.send(JSON.stringify({ type: 'hub:registered', success: false, error: result.error }));
+          }
+          break;
+
+        case 'agent:projects':
+          machineRegistry.updateProjects(msg.machineId, msg.projects);
+          break;
+
+        case 'agent:sessions':
+          machineRegistry.updateSessions(msg.machineId, msg.sessions);
+          break;
+
+        case 'agent:heartbeat':
+          machineRegistry.updateHeartbeat(msg.machineId);
+          ws.send(JSON.stringify({ type: 'hub:pong' }));
+          break;
+
+        default:
+          console.log(`[Agent] Unknown message type: ${msg.type}`);
+      }
+    } catch (err) {
+      console.error('[Agent] Message parse error:', err.message);
+    }
+  });
+
+  ws.on('close', () => {
+    if (registeredMachineId) {
+      machineRegistry.unregisterAgent(registeredMachineId);
+    }
+    console.log(`[Agent] Connection closed: ${registeredMachineId || 'unregistered'}`);
+  });
+
+  ws.on('error', (err) => {
+    console.error(`[Agent] WebSocket error: ${err.message}`);
+  });
+});
+
+// Handle client WebSocket connections
 wss.on('connection', (ws, req) => {
   console.log('[WS] New connection attempt');
 
@@ -812,6 +906,15 @@ wss.on('connection', (ws, req) => {
         case 'list_sessions':
           const currentSessions = listSessions();
           ws.send(JSON.stringify({ type: 'sessions', sessions: currentSessions }));
+          break;
+
+        case 'list_machines':
+          // List all connected machines (hub + agents)
+          // Update local machine data first
+          machineRegistry.updateLocalMachine(listProjects(), listSessions());
+          const machines = machineRegistry.listMachines();
+          ws.send(JSON.stringify({ type: 'machines', machines }));
+          console.log(`[WS] Sent ${machines.length} machines`);
           break;
 
         case 'connect_session':
@@ -1079,8 +1182,12 @@ server.on('error', (err) => {
 process.on('SIGINT', () => {
   console.log('\n[Server] Shutting down...');
 
+  // Shutdown machine registry (closes agent connections)
+  machineRegistry.shutdown();
+
   // Close all WebSocket connections
   wss.clients.forEach(ws => ws.close());
+  wssAgent.clients.forEach(ws => ws.close());
 
   // Attempt to kill spawned launchers (best effort)
   for (const pid of spawnedLaunchers) {
@@ -1108,8 +1215,12 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   console.log('\n[Server] Received SIGTERM, shutting down...');
 
+  // Shutdown machine registry (closes agent connections)
+  machineRegistry.shutdown();
+
   // Close all WebSocket connections
   wss.clients.forEach(ws => ws.close());
+  wssAgent.clients.forEach(ws => ws.close());
 
   // Attempt to kill spawned launchers (best effort)
   for (const pid of spawnedLaunchers) {

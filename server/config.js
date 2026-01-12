@@ -1,8 +1,11 @@
 // Server configuration
-// IMPORTANT: Change AUTH_TOKEN before deploying
+// IMPORTANT: Change AUTH_TOKEN and AGENT_TOKEN before deploying
 export default {
   // Authentication token - clients must send this to connect
   AUTH_TOKEN: process.env.RELAY_AUTH_TOKEN || 'change-this-secret-token',
+
+  // Agent authentication token - remote agents must send this to register
+  AGENT_TOKEN: process.env.CNM_AGENT_TOKEN || 'change-this-agent-token',
 
   // Server settings
   PORT: parseInt(process.env.RELAY_PORT) || 3001,

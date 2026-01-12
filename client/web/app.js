@@ -54,13 +54,30 @@
   const musicBtn = document.getElementById('music-btn');
   const ambientAudio = document.getElementById('ambient-audio');
 
+  // Machine selector DOM elements
+  const machineView = document.getElementById('machine-view');
+  const machineCards = document.getElementById('machine-cards');
+  const machineConnectionStatus = document.getElementById('machine-connection-status');
+  const machineStatusText = machineConnectionStatus?.querySelector('.status-text');
+  const noMachines = document.getElementById('no-machines');
+  const backToMachinesBtn = document.getElementById('back-to-machines-btn');
+  const currentMachineNameEl = document.getElementById('current-machine-name');
+
   // State
-  let ws = null;
+  let ws = null;  // Hub WebSocket (for machine discovery)
+  let agentWs = null;  // Direct P2P WebSocket to selected agent
   let reconnectDelay = RECONNECT_DELAY;
   let reconnectTimeout = null;
+  let agentReconnectTimeout = null;
   let pingInterval = null;
+  let agentPingInterval = null;
   let availableProjects = []; // Unified list: all folders + active session data
-  let currentView = 'dashboard';
+  let currentView = 'machines';  // Start on machine selector
+
+  // Machine selector state
+  let availableMachines = [];
+  let selectedMachine = null;  // Currently selected machine { id, hostname, address, ... }
+  let lastSelectedMachineId = localStorage.getItem('cnm-machine') || null;
   const startupTime = Date.now();
   const STARTUP_GRACE_PERIOD = 15000; // 15s grace period for server startup
 
@@ -189,6 +206,7 @@
     currentView = viewName;
 
     // Show/hide views
+    if (machineView) machineView.classList.toggle('active', viewName === 'machines');
     dashboardView.classList.toggle('active', viewName === 'dashboard');
     splitView.classList.toggle('active', viewName === 'split');
     focusView.classList.toggle('active', viewName === 'focus');
@@ -196,6 +214,12 @@
     // If going to dashboard, disconnect focus terminal
     if (viewName === 'dashboard') {
       focusedSessionId = null;
+    }
+
+    // If going back to machines, disconnect from agent
+    if (viewName === 'machines') {
+      disconnectFromAgent();
+      selectedMachine = null;
     }
 
     // Fit terminals when switching views
@@ -213,6 +237,272 @@
         }
       }, 50);
     }
+  }
+
+  // ============================================================================
+  // MACHINE SELECTOR
+  // ============================================================================
+
+  // Set machine connection status
+  function setMachineConnectionStatus(status, text) {
+    if (!machineConnectionStatus) return;
+
+    if (status === 'connected') {
+      machineConnectionStatus.classList.add('connected');
+    } else {
+      machineConnectionStatus.classList.remove('connected');
+    }
+    if (machineStatusText) machineStatusText.textContent = text;
+  }
+
+  // Render machine cards
+  function renderMachineCards() {
+    if (!machineCards) return;
+
+    // Show/hide empty state
+    if (noMachines) {
+      noMachines.style.display = availableMachines.length === 0 ? '' : 'none';
+    }
+
+    if (availableMachines.length === 0) {
+      machineCards.innerHTML = '';
+      return;
+    }
+
+    machineCards.innerHTML = availableMachines.map(machine => {
+      const statusClass = machine.status === 'connected' ? 'connected' : 'disconnected';
+      const localClass = machine.isLocal ? 'local' : '';
+      const badgeClass = machine.isLocal ? 'local' : statusClass;
+      const badgeText = machine.isLocal ? 'Hub' : (machine.status === 'connected' ? 'Online' : 'Offline');
+
+      return `
+        <div class="machine-card ${statusClass} ${localClass}" data-machine-id="${escapeHtml(machine.id)}">
+          <div class="machine-card-header">
+            <div class="machine-card-title">
+              <span class="machine-dot ${machine.isLocal ? 'local' : statusClass}"></span>
+              <span class="machine-card-name">${escapeHtml(machine.hostname)}</span>
+            </div>
+            <span class="machine-card-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="machine-card-info">
+            <span class="machine-card-address">${escapeHtml(machine.address || 'localhost')}</span>
+            <div class="machine-card-stats">
+              <span class="machine-card-stat">
+                <span class="count">${machine.sessionCount || 0}</span> active
+              </span>
+              <span class="machine-card-stat">
+                <span class="count">${machine.projectCount || 0}</span> projects
+              </span>
+            </div>
+          </div>
+          <div class="machine-card-footer">
+            <button class="machine-card-action" ${machine.status !== 'connected' ? 'disabled' : ''}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <span>Connect</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Setup machine card click handlers (event delegation)
+  function setupMachineCardDelegation() {
+    if (!machineCards) return;
+
+    machineCards.addEventListener('click', (e) => {
+      const card = e.target.closest('.machine-card');
+      if (!card) return;
+
+      const machineId = card.dataset.machineId;
+      const machine = availableMachines.find(m => m.id === machineId);
+
+      if (!machine || machine.status !== 'connected') {
+        showUploadStatus('error', 'Machine is offline');
+        return;
+      }
+
+      selectMachine(machine);
+    });
+  }
+
+  // Select a machine and connect to it
+  function selectMachine(machine) {
+    selectedMachine = machine;
+    lastSelectedMachineId = machine.id;
+    localStorage.setItem('cnm-machine', machine.id);
+
+    // Update current machine display
+    if (currentMachineNameEl) {
+      currentMachineNameEl.textContent = machine.hostname;
+    }
+
+    console.log(`[Machine] Selected: ${machine.hostname} (${machine.id})`);
+
+    // Connect to agent (P2P or local)
+    if (machine.isLocal) {
+      // Local machine - use the hub WebSocket directly for projects
+      // The hub already has the projects/sessions
+      requestProjects();
+      switchView('dashboard');
+    } else {
+      // Remote machine - connect directly to agent
+      connectToAgent(machine);
+    }
+  }
+
+  // ============================================================================
+  // P2P AGENT CONNECTION
+  // ============================================================================
+
+  // Connect to a remote agent
+  function connectToAgent(machine) {
+    if (!machine || !machine.address) {
+      console.error('[Agent] No address for machine');
+      return;
+    }
+
+    // Disconnect existing agent connection
+    disconnectFromAgent();
+
+    const token = getToken();
+    // Use agent token (same as hub's AGENT_TOKEN for now)
+    const agentUrl = `${machine.address}?token=${encodeURIComponent(token)}`;
+
+    console.log(`[Agent] Connecting to ${machine.hostname} at ${machine.address}`);
+    setConnectionStatus('', 'Connecting to ' + machine.hostname);
+
+    try {
+      agentWs = new WebSocket(agentUrl);
+    } catch (err) {
+      console.error('[Agent] Connection error:', err);
+      showUploadStatus('error', 'Failed to connect to ' + machine.hostname);
+      return;
+    }
+
+    agentWs.onopen = () => {
+      console.log(`[Agent] Connected to ${machine.hostname}`);
+      setConnectionStatus('connected', 'Connected to ' + machine.hostname);
+
+      // Start agent ping
+      if (agentPingInterval) clearInterval(agentPingInterval);
+      agentPingInterval = setInterval(() => {
+        if (agentWs && agentWs.readyState === WebSocket.OPEN) {
+          agentWs.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 25000);
+
+      // Request projects from agent
+      agentWs.send(JSON.stringify({ type: 'list_projects' }));
+
+      // Switch to dashboard
+      switchView('dashboard');
+    };
+
+    agentWs.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        handleAgentMessage(msg);
+      } catch (err) {
+        console.error('[Agent] Parse error:', err);
+      }
+    };
+
+    agentWs.onclose = (event) => {
+      console.log(`[Agent] Disconnected from ${machine.hostname}`);
+      if (agentPingInterval) {
+        clearInterval(agentPingInterval);
+        agentPingInterval = null;
+      }
+
+      // If we're still on dashboard for this machine, show error
+      if (currentView === 'dashboard' && selectedMachine?.id === machine.id) {
+        setConnectionStatus('', 'Disconnected');
+        // Schedule reconnect
+        scheduleAgentReconnect(machine);
+      }
+    };
+
+    agentWs.onerror = (err) => {
+      console.error('[Agent] WebSocket error');
+      showUploadStatus('error', 'Connection error to ' + machine.hostname);
+    };
+  }
+
+  // Disconnect from agent
+  function disconnectFromAgent() {
+    if (agentReconnectTimeout) {
+      clearTimeout(agentReconnectTimeout);
+      agentReconnectTimeout = null;
+    }
+    if (agentPingInterval) {
+      clearInterval(agentPingInterval);
+      agentPingInterval = null;
+    }
+    if (agentWs) {
+      agentWs.close();
+      agentWs = null;
+    }
+  }
+
+  // Schedule agent reconnect
+  function scheduleAgentReconnect(machine) {
+    if (agentReconnectTimeout) clearTimeout(agentReconnectTimeout);
+    agentReconnectTimeout = setTimeout(() => {
+      if (selectedMachine?.id === machine.id && currentView === 'dashboard') {
+        connectToAgent(machine);
+      }
+    }, RECONNECT_DELAY);
+  }
+
+  // Handle messages from agent
+  function handleAgentMessage(msg) {
+    switch (msg.type) {
+      case 'projects':
+        availableProjects = msg.projects || [];
+        sessionCards.classList.remove('loading');
+        renderDashboard();
+        break;
+
+      case 'sessions':
+        // Legacy - convert to projects
+        availableProjects = (msg.sessions || []).map(s => ({ ...s, isActive: true }));
+        renderDashboard();
+        break;
+
+      case 'output':
+      case 'scrollback':
+      case 'status':
+        // Forward to existing handlers
+        handleMessage(msg);
+        break;
+
+      case 'start_folder_session_result':
+      case 'upload_result':
+        handleMessage(msg);
+        break;
+
+      case 'pong':
+        // Heartbeat response
+        break;
+
+      case 'error':
+        console.error('[Agent]', msg.message);
+        break;
+
+      default:
+        console.log('[Agent] Unknown message:', msg.type);
+    }
+  }
+
+  // Get the active WebSocket (agent if connected, else hub)
+  function getActiveWs() {
+    if (selectedMachine && !selectedMachine.isLocal && agentWs && agentWs.readyState === WebSocket.OPEN) {
+      return agentWs;
+    }
+    return ws;
   }
 
   // Render project cards in dashboard (unified: active + inactive projects)
@@ -424,16 +714,17 @@
     });
   }
 
-  // Start a session for an inactive project
+  // Start a session for an inactive project (uses active WebSocket)
   function startProjectSession(projectId, skipPermissions) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
+    const activeWs = getActiveWs();
+    if (!activeWs || activeWs.readyState !== WebSocket.OPEN) {
       showUploadStatus('error', 'Not connected to server');
       return;
     }
 
     showUploadStatus('uploading', `Starting ${projectId}...`);
 
-    ws.send(JSON.stringify({
+    activeWs.send(JSON.stringify({
       type: 'start_folder_session',
       folderName: projectId,
       skipPermissions
@@ -613,11 +904,12 @@
 
   // Connect to a session via WebSocket
   function connectToSession(sessionId) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    const activeWs = getActiveWs();
+    if (activeWs && activeWs.readyState === WebSocket.OPEN) {
       // Mark connection as pending until we receive confirmation
       sessionConnectionPending = true;
 
-      wsSend({ type: 'connect_session', sessionId });
+      activeWs.send(JSON.stringify({ type: 'connect_session', sessionId }));
 
       // Initialize session state if not exists
       if (!sessions.has(sessionId)) {
@@ -853,6 +1145,7 @@
 
     ws.onopen = () => {
       setConnectionStatus('connected', 'Connected');
+      setMachineConnectionStatus('connected', 'Connected to Hub');
       reconnectDelay = RECONNECT_DELAY;
 
       // Keep connection alive with pings (iOS Safari may close idle connections)
@@ -866,12 +1159,17 @@
       // Note: We keep the token in URL for now since server sessions are in-memory
       // and would be lost on server restart. Token in URL allows easy reconnection.
 
-      // Reconnect to active sessions
-      if (focusedSessionId) {
-        connectToSession(focusedSessionId);
-      }
-      for (const sessionId of splitPanels.keys()) {
-        connectToSession(sessionId);
+      // Request machine list from hub (multi-machine support)
+      ws.send(JSON.stringify({ type: 'list_machines' }));
+
+      // Reconnect to active sessions (if we're already past machine selection)
+      if (selectedMachine) {
+        if (focusedSessionId) {
+          connectToSession(focusedSessionId);
+        }
+        for (const sessionId of splitPanels.keys()) {
+          connectToSession(sessionId);
+        }
       }
     };
 
@@ -922,6 +1220,22 @@
   // Handle incoming messages
   function handleMessage(msg) {
     switch (msg.type) {
+      case 'machines':
+        availableMachines = msg.machines || [];
+        setMachineConnectionStatus('connected', 'Connected to Hub');
+        clearTokenFromUrl();
+        renderMachineCards();
+
+        // Auto-select previously selected machine if available and connected
+        if (lastSelectedMachineId && currentView === 'machines') {
+          const savedMachine = availableMachines.find(m => m.id === lastSelectedMachineId && m.status === 'connected');
+          if (savedMachine) {
+            console.log(`[Machine] Auto-selecting saved machine: ${savedMachine.hostname}`);
+            selectMachine(savedMachine);
+          }
+        }
+        break;
+
       case 'projects':
         availableProjects = msg.projects || [];
         sessionCards.classList.remove('loading');
@@ -1082,11 +1396,12 @@
 
   // Request project list (unified: all folders + active session data)
   function requestProjects() {
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    const activeWs = getActiveWs();
+    if (activeWs && activeWs.readyState === WebSocket.OPEN) {
       // Show loading state
       sessionCards.classList.add('loading');
       setConnectionStatus('refreshing', 'Connecting');
-      ws.send(JSON.stringify({ type: 'list_projects' }));
+      activeWs.send(JSON.stringify({ type: 'list_projects' }));
     }
   }
 
@@ -1095,9 +1410,15 @@
     requestProjects();
   }
 
-  // Send input to server
+  // Send input to server (uses active WebSocket - hub or agent)
   function sendInput(data) {
     if (!focusedSessionId) return;
+
+    const activeWs = getActiveWs();
+    if (!activeWs || activeWs.readyState !== WebSocket.OPEN) {
+      console.warn('[Input] Cannot send - not connected');
+      return;
+    }
 
     // Check if session is connected before sending
     const session = sessions.get(focusedSessionId);
@@ -1105,24 +1426,30 @@
       // Still send - server will buffer if connection is establishing
       console.log('[Input] Session not connected yet, input may be delayed');
     }
-    wsSend({ type: 'input', data });
+    activeWs.send(JSON.stringify({ type: 'input', data }));
   }
 
-  // Send control key
+  // Send control key (uses active WebSocket - hub or agent)
   function sendControl(key) {
-    if (focusedSessionId) {
-      wsSend({ type: 'control', key });
+    if (!focusedSessionId) return;
+
+    const activeWs = getActiveWs();
+    if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+      activeWs.send(JSON.stringify({ type: 'control', key }));
     }
   }
 
-  // Send resize
+  // Send resize (uses active WebSocket - hub or agent)
   function sendResize() {
-    if (focusedSessionId && focusTerm) {
-      wsSend({
+    if (!focusedSessionId || !focusTerm) return;
+
+    const activeWs = getActiveWs();
+    if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+      activeWs.send(JSON.stringify({
         type: 'resize',
         cols: focusTerm.cols,
         rows: focusTerm.rows
-      });
+      }));
     }
   }
 
@@ -1158,14 +1485,15 @@
     }
   }
 
-  // Upload a file to a session's working directory
+  // Upload a file to a session's working directory (uses active WebSocket)
   function uploadFile(file, sessionId) {
     if (!sessionId) {
       showUploadStatus('error', 'No session selected');
       return;
     }
 
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
+    const activeWs = getActiveWs();
+    if (!activeWs || activeWs.readyState !== WebSocket.OPEN) {
       showUploadStatus('error', 'Not connected to server');
       return;
     }
@@ -1190,6 +1518,8 @@
     uploadInProgress = true;
     showUploadStatus('uploading', `Uploading to ${sessionName}...`);
 
+    // Capture activeWs reference for use in callback
+    const uploadWs = activeWs;
     const reader = new FileReader();
 
     reader.onload = () => {
@@ -1198,13 +1528,18 @@
         const dataUrl = reader.result;
         const base64 = dataUrl.split(',')[1];
 
-        wsSend({
-          type: 'upload_file',
-          sessionId: sessionId,
-          filename: file.name,
-          data: base64,
-          size: file.size
-        });
+        if (uploadWs && uploadWs.readyState === WebSocket.OPEN) {
+          uploadWs.send(JSON.stringify({
+            type: 'upload_file',
+            sessionId: sessionId,
+            filename: file.name,
+            data: base64,
+            size: file.size
+          }));
+        } else {
+          uploadInProgress = false;
+          showUploadStatus('error', 'Connection lost during upload');
+        }
       } catch (err) {
         uploadInProgress = false;
         showUploadStatus('error', 'Failed to encode file');
@@ -1657,6 +1992,17 @@
       switchView('dashboard');
     });
 
+    // Back to machines button (dashboard view)
+    if (backToMachinesBtn) {
+      backToMachinesBtn.addEventListener('click', () => {
+        switchView('machines');
+        // Re-request machines list to refresh
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'list_machines' }));
+        }
+      });
+    }
+
     // Back button (split view)
     if (splitBackBtn) {
       splitBackBtn.addEventListener('click', () => {
@@ -1867,14 +2213,25 @@
     setupMobileInput();
     setupEventListeners();
     setupPullToRefresh();
+    setupMachineCardDelegation();
 
     // Connect immediately - iOS self-signed cert stability handled by session cookie
     connect();
 
-    // Periodic refresh of sessions
+    // Periodic refresh based on current view
     setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) {
-        requestSessions();
+        if (currentView === 'machines') {
+          // Refresh machine list when on machine selector
+          ws.send(JSON.stringify({ type: 'list_machines' }));
+        } else if (selectedMachine) {
+          // Refresh projects when viewing a specific machine
+          if (selectedMachine.isLocal) {
+            requestProjects();
+          } else if (agentWs && agentWs.readyState === WebSocket.OPEN) {
+            agentWs.send(JSON.stringify({ type: 'list_projects' }));
+          }
+        }
       }
     }, 10000);
 

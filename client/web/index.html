@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <title>Celio's Network Machine</title>
   <link rel="stylesheet" href="xterm.css">
-  <link rel="stylesheet" href="style.css?v=64">
+  <link rel="stylesheet" href="style.css?v=65">
 </head>
 <body>
   <div id="app">
@@ -78,13 +78,44 @@
       </div>
     </div>
 
+    <!-- Machine Selector View (Landing Page) -->
+    <div id="machine-view" class="view active">
+      <div id="machine-connection-status">
+        <span class="status-gem gem-ruby"></span>
+        <span class="status-text">Connecting to Hub</span>
+        <span class="status-gem gem-sapphire"></span>
+      </div>
+      <div id="machine-header">
+        <h2>Select Machine</h2>
+        <p class="machine-subtitle">Choose a machine to view its projects</p>
+      </div>
+      <div id="machine-cards"></div>
+      <div id="no-machines" class="empty-state">
+        <p>No machines connected</p>
+        <p class="hint">Start a CNM agent on a remote machine</p>
+      </div>
+    </div>
+
     <!-- Dashboard View (Session Cards) -->
-    <div id="dashboard-view" class="view active">
+    <div id="dashboard-view" class="view">
       <!-- Pull-to-refresh indicator -->
       <div id="pull-refresh">
         <svg id="pull-refresh-icon" width="36" height="36" viewBox="0 0 256 256" fill="currentColor">
           <path id="pull-refresh-path" d="m 128,38.17189 c -3.96774,0 -7.88276,0.26235 -11.71455,0.76112 l 0,107.94597 99.54061,0 c 1.29999,-6.08286 1.98552,-12.39119 1.98552,-18.86242 0,-49.6066 -40.20496,-89.84467 -89.81158,-89.84467 z m -57.282183,20.61629 c -19.888889,16.47529 -32.529397,41.38427 -32.529397,69.22838 0,6.46737 0.689185,12.78339 1.985518,18.86242 l 30.543879,0 0,-88.0908 z M 45.865755,164.45081 c 5.665734,12.76396 14.229794,23.96191 24.852062,32.76104 l 0,-32.76104 -24.852062,0 z m 70.419695,0 0,52.61621 c 3.83198,0.4988 7.7466,0.7611 11.71455,0.7611 36.63278,0 68.12716,-21.93201 82.10115,-53.37731 l -93.8157,0 z"/>
         </svg>
+      </div>
+      <!-- Dashboard Header with Back Button -->
+      <div id="dashboard-header">
+        <button id="back-to-machines-btn" title="Back to machines">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          </svg>
+          <span>Machines</span>
+        </button>
+        <div id="current-machine-info">
+          <span class="machine-dot connected"></span>
+          <span id="current-machine-name">Local</span>
+        </div>
       </div>
       <!-- Connection Status -->
       <div id="connection-status">
@@ -175,6 +206,6 @@
   <script src="xterm-addon-fit.min.js"></script>
   <script src="xterm-addon-web-links.min.js"></script>
   <script src="icons.js?v=2"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=55"></script>
 </body>
 </html>
