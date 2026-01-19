@@ -20,9 +20,18 @@ const registryFile = join(registryDir, `${sessionId}.json`);
 // Scrollback buffer
 const scrollbackLines = [];
 const MAX_SCROLLBACK = config.SCROLLBACK_LINES;
+const MAX_SCROLLBACK_BYTES = 50 * 1024 * 1024; // 50MB byte limit
+let scrollbackBytes = 0;
+
+// Per-socket buffer protection (prevents DoS from unbounded buffer growth)
+const MAX_SOCKET_BUFFER_SIZE = 64 * 1024; // 64KB max incomplete message
 
 // Connected clients
 const clients = new Set();
+
+// Registry update interval (keep session alive in server's view)
+const REGISTRY_UPDATE_INTERVAL = 5000; // Update every 5 seconds
+let registryUpdateTimer = null;
 
 // Ensure registry directory exists
 mkdirSync(registryDir, { recursive: true });
@@ -65,10 +74,22 @@ try {
 function appendScrollback(data) {
   const lines = data.split('\n');
   for (const line of lines) {
+    const lineBytes = Buffer.byteLength(line, 'utf8');
+
+    // Enforce line count limit
     if (scrollbackLines.length >= MAX_SCROLLBACK) {
-      scrollbackLines.shift();
+      const removed = scrollbackLines.shift();
+      scrollbackBytes -= Buffer.byteLength(removed, 'utf8');
     }
+
+    // Enforce byte limit - remove old lines until under limit
+    while (scrollbackBytes + lineBytes > MAX_SCROLLBACK_BYTES && scrollbackLines.length > 0) {
+      const removed = scrollbackLines.shift();
+      scrollbackBytes -= Buffer.byteLength(removed, 'utf8');
+    }
+
     scrollbackLines.push(line);
+    scrollbackBytes += lineBytes;
   }
 }
 
@@ -131,6 +152,13 @@ const server = net.createServer((socket) => {
   socket.on('data', (data) => {
     buffer += data.toString();
 
+    // Prevent unbounded buffer growth (DoS protection)
+    if (buffer.length > MAX_SOCKET_BUFFER_SIZE) {
+      console.error(`[Pipe] Buffer overflow for client, resetting buffer`);
+      buffer = '';
+      return;
+    }
+
     // Process complete JSON messages (newline-delimited)
     const lines = buffer.split('\n');
     buffer = lines.pop(); // Keep incomplete line in buffer
@@ -139,7 +167,7 @@ const server = net.createServer((socket) => {
       if (!line.trim()) continue;
       try {
         const msg = JSON.parse(line);
-        handleMessage(msg);
+        handleMessage(msg, socket);
       } catch (err) {
         console.error(`[Pipe] Parse error: ${err.message}`);
       }
@@ -158,7 +186,7 @@ const server = net.createServer((socket) => {
 });
 
 // Handle messages from relay
-function handleMessage(msg) {
+function handleMessage(msg, socket) {
   switch (msg.type) {
     case 'input':
       if (typeof msg.data === 'string') {
@@ -184,26 +212,58 @@ function handleMessage(msg) {
       }
       break;
 
+    case 'ping':
+      // Respond to keepalive pings from relay server
+      try {
+        socket.write(JSON.stringify({ type: 'pong' }) + '\n');
+      } catch (err) {
+        // Socket may be closing
+      }
+      break;
+
     default:
       console.log(`[Pipe] Unknown message type: ${msg.type}`);
   }
 }
 
+// Update registry with current state (keeps session alive in server's view)
+function updateRegistry() {
+  try {
+    // Get preview from last few lines of scrollback
+    const previewLines = scrollbackLines.slice(-8);
+    const preview = previewLines.join('\n').slice(-500); // Limit preview size
+
+    const sessionInfo = {
+      id: sessionId,
+      pipe: pipeName,
+      cwd: workingDir,
+      pid: ptyProcess.pid,
+      started: startTime,
+      lastSeen: Date.now(),
+      clientCount: clients.size,
+      preview: preview,
+      status: clients.size > 0 ? 'connected' : 'idle'
+    };
+
+    writeFileSync(registryFile, JSON.stringify(sessionInfo, null, 2));
+  } catch (err) {
+    // Ignore write errors - server will detect stale session eventually
+  }
+}
+
+// Session start time
+const startTime = Date.now();
+
 // Start listening on named pipe
 server.listen(pipeName, () => {
   console.log(`[Pipe] Listening on ${pipeName}`);
 
-  // Register session
-  const sessionInfo = {
-    id: sessionId,
-    pipe: pipeName,
-    cwd: workingDir,
-    pid: ptyProcess.pid,
-    started: Date.now()
-  };
-
-  writeFileSync(registryFile, JSON.stringify(sessionInfo, null, 2));
+  // Register session initially
+  updateRegistry();
   console.log(`[Registry] Session registered`);
+
+  // Start periodic registry updates to keep session alive
+  registryUpdateTimer = setInterval(updateRegistry, REGISTRY_UPDATE_INTERVAL);
 });
 
 server.on('error', (err) => {
@@ -215,6 +275,13 @@ server.on('error', (err) => {
 // Cleanup function
 function cleanup() {
   console.log('[Cleanup] Removing session from registry...');
+
+  // Stop registry updates
+  if (registryUpdateTimer) {
+    clearInterval(registryUpdateTimer);
+    registryUpdateTimer = null;
+  }
+
   try {
     if (existsSync(registryFile)) {
       unlinkSync(registryFile);

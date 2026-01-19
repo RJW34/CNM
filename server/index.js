@@ -45,6 +45,27 @@ const MAX_PIPE_BUFFER_SIZE = 1024 * 1024; // 1MB
 // Track spawned launcher processes for cleanup on shutdown
 const spawnedLaunchers = new Set();
 
+// Periodic cleanup of dead launcher PIDs (prevents memory leak from growing Set)
+const LAUNCHER_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+setInterval(() => {
+  if (spawnedLaunchers.size === 0) return;
+
+  let cleaned = 0;
+  for (const pid of spawnedLaunchers) {
+    try {
+      // process.kill(pid, 0) throws if process doesn't exist
+      process.kill(pid, 0);
+    } catch (err) {
+      // Process no longer exists, remove from tracking
+      spawnedLaunchers.delete(pid);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`[Launchers] Cleaned ${cleaned} dead PIDs, ${spawnedLaunchers.size} active`);
+  }
+}, LAUNCHER_CLEANUP_INTERVAL);
+
 // List available sessions from registry (with health filtering)
 function listSessions(includePreview = true) {
   try {

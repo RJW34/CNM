@@ -70,6 +70,14 @@ client/web/
 ├── app.js            # WebSocket client, session selection, xterm.js
 └── style.css         # Mobile-optimized styles
 
+startup/
+├── CNM-Tray.ps1      # System tray application (starts server, keep-awake)
+├── CNM-Tray.vbs      # Silent launcher for CNM-Tray.ps1
+├── CNM-Control.ps1   # External control interface (for ABSO integration)
+├── Install-CNMStartup.ps1  # Scheduled task installer
+├── install.bat       # Quick install shortcut
+└── uninstall.bat     # Quick uninstall shortcut
+
 ~/.claude-relay/sessions/   # Session registry (auto-managed)
 ├── my-project.json
 └── another-project.json
@@ -228,3 +236,66 @@ curl -k https://192.168.1.204:3001/ || echo "CNM server not responding on PC1"
 ## Local Development
 
 For local-only access (no Cloudflare), the server works directly on the LAN.
+
+## External Control Interface (ABSO Integration)
+
+CNM can be controlled by external tools via the `CNM-Control.ps1` script. This enables tools like **A.B.S.O. (Adaptive Battle Station Optimizer)** to stop CNM during gaming for optimal performance.
+
+### Control Script Usage
+
+```powershell
+# Check CNM status
+.\startup\CNM-Control.ps1 -Status
+
+# Stop CNM (server + tray)
+.\startup\CNM-Control.ps1 -Stop
+
+# Start CNM
+.\startup\CNM-Control.ps1 -Start
+
+# Stop CNM and disable startup task
+.\startup\CNM-Control.ps1 -Disable
+
+# Enable startup task and start CNM
+.\startup\CNM-Control.ps1 -Enable
+
+# Quiet mode for scripting
+.\startup\CNM-Control.ps1 -Stop -Quiet
+```
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success (or CNM is running for `-Status`) |
+| 1 | Failure (or CNM is stopped for `-Status`) |
+
+### Why Stop CNM During Gaming?
+
+When CNM is running, it:
+- Uses port 3001 (Node.js server)
+- Keeps the system awake via `SetThreadExecutionState`
+- Consumes background CPU/memory
+
+Stopping CNM during gaming allows:
+- Power optimizations to work properly
+- Reduced background processes
+- Lower latency (fewer interrupts)
+
+### ABSO Integration
+
+The `windowsoptimizerabso` project has a `CNMSettingsHandler` that:
+1. Detects if CNM is running
+2. Stops CNM when applying gaming profiles
+3. Restores CNM when rolling back optimizations
+
+See `ABSO-CNM-INTEGRATION.md` for implementation details.
+
+### Important Notes
+
+- **Single Instance Only**: The tray app uses a global mutex (`Global\CNM_Tray_SingleInstance`) to ensure only ONE tray icon ever exists. Duplicate launches exit silently.
+- The tray app has auto-restart logic (every 5s checks if server is running)
+- `CNM-Control.ps1 -Stop` kills BOTH server AND tray to prevent auto-restart
+- The scheduled task (`CNM-Server-Tray`) is NOT disabled by `-Stop`, only by `-Disable`
+- Use `-Disable` if you want CNM to stay off after reboot
+- Automated launches (VBS, scheduled task, ABSO) use `-Silent` flag to suppress "already running" popups

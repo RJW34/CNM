@@ -131,6 +131,7 @@
 
 html, body {
   height: 100%;
+  height: 100dvh; /* Dynamic viewport height - iOS Safari compatible */
   width: 100%;
   overflow: hidden;
   background: var(--bg-primary);
@@ -138,6 +139,8 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  /* Prevent iOS rubber-band scrolling on body */
+  overscroll-behavior: none;
 }
 
 /* ============================================
@@ -198,11 +201,20 @@ body::after {
   display: flex;
   flex-direction: column;
   height: 100%;
-  height: -webkit-fill-available;
+  height: 100dvh; /* Dynamic viewport height for iOS Safari */
+  min-height: 0; /* Allow flex children to shrink properly */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /* Prevent layout shift when iOS keyboard appears */
+  overflow: hidden;
+}
+
+/* When iOS keyboard is visible, adjust layout */
+body.keyboard-visible #app {
+  /* Let visualViewport API control the actual height via JS */
+  height: var(--viewport-height, 100dvh);
 }
 
 /* Header - Layered glass effect with depth */
@@ -1530,6 +1542,8 @@ body::after {
 /* Focus View */
 #focus-view {
   flex-direction: column;
+  min-height: 0; /* Critical for iOS - allows flex children to shrink */
+  overflow: hidden;
 }
 
 #focus-header {
@@ -1880,13 +1894,22 @@ body::after {
 
 #focus-terminal {
   flex: 1;
+  min-height: 0; /* Critical for iOS - allows terminal to shrink when keyboard opens */
   overflow: hidden;
   background: #1a1e24;
+  /* Smooth resize transitions for keyboard open/close */
+  transition: height 0.15s ease-out;
 }
 
 #focus-terminal .xterm {
   height: 100%;
   padding: 8px;
+}
+
+/* Terminal viewport needs to handle iOS scroll */
+#focus-terminal .xterm-viewport {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Input Bar - simplified */
@@ -1937,18 +1960,31 @@ body::after {
   width: 100%;
   height: 44px; /* iOS minimum touch target */
   opacity: 0.01; /* Nearly invisible but not hidden from accessibility */
-  font-size: 16px; /* Prevents iOS zoom */
+  font-size: 16px; /* Prevents iOS zoom on focus */
   background: transparent;
   border: none;
   outline: none;
   z-index: calc(var(--z-base) * -1);
-  /* Remove transform - can interfere with iOS focus */
+  /* Prevent iOS text selection UI */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent iOS autocorrect popups interfering */
+  -webkit-text-size-adjust: 100%;
+  /* Ensure the input doesn't cause scrolling */
+  touch-action: manipulation;
 }
 
 /* When keyboard is visible, bring input to normal z-index */
 body.keyboard-visible #hidden-input {
   z-index: var(--z-keyboard);
   bottom: 0; /* Keyboard handles safe area when visible */
+  /* Make it slightly more visible for debugging, but still transparent */
+  opacity: 0.001;
+}
+
+/* Ensure hidden input doesn't interfere with layout when keyboard closes */
+body:not(.keyboard-visible) #hidden-input {
+  pointer-events: none;
 }
 
 /* Fullscreen mode */

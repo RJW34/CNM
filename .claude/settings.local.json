@@ -2,7 +2,29 @@
   "permissions": {
     "allow": [
       "mcp__plugin_context7_context7__resolve-library-id",
-      "mcp__plugin_context7_context7__query-docs"
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"Install-CNMStartup.ps1\" -Force)",
+      "Bash(echo:*)",
+      "Bash(powershell -Command \"echo $PROFILE\")",
+      "Bash(powershell -Command \"Write-Host $PROFILE\")",
+      "Bash(powershell -NoProfile -Command '$PROFILE')",
+      "Bash(powershell -NoProfile -Command \"Test-Path ''$env:USERPROFILE\\\\Documents\\\\WindowsPowerShell\\\\Microsoft.PowerShell_profile.ps1''\")",
+      "Bash(powershell -NoProfile -Command:*)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\mtoli\\\\Documents\\\\Code\\\\iphone bridge\\\\test-status.ps1\")",
+      "Bash(del \"C:\\\\Users\\\\mtoli\\\\Documents\\\\Code\\\\iphone bridge\\\\test-status.ps1\")",
+      "Bash(start \"\" wscript.exe \"CNM-Tray.vbs\")",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\mtoli\\\\Documents\\\\Code\\\\iphone bridge\\\\debug-status.ps1\")",
+      "Bash(taskkill:*)",
+      "Bash(tasklist /FI \"IMAGENAME eq powershell.exe\" /FO TABLE)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(powercfg:*)",
+      "Bash(schtasks /query /tn \"CNM-Server-Tray\" /v /fo list)",
+      "Bash(cmd /c \"schtasks /query /tn CNM-Server-Tray /v /fo list\")",
+      "Bash(tasklist /FI \"IMAGENAME eq wscript.exe\" /FO TABLE)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\mtoli\\\\Documents\\\\Code\\\\iphone bridge\\\\restart-tray.ps1\")",
+      "Bash(del \"C:\\\\Users\\\\mtoli\\\\Documents\\\\Code\\\\iphone bridge\\\\restart-tray.ps1\")",
+      "Bash(git checkout:*)"
     ]
   }
 }

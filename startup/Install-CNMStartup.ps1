@@ -8,6 +8,7 @@ param(
 
 $TaskName = "CNM-Server-Tray"
 $TaskDescription = "Celio's Network Machine - Ruby & Sapphire Link Server (System Tray)"
+$VbsPath = Join-Path $PSScriptRoot "CNM-Tray.vbs"
 $ScriptPath = Join-Path $PSScriptRoot "CNM-Tray.ps1"
 
 function Test-Admin {
@@ -28,7 +29,11 @@ function Install-CNMTask {
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
     }
 
-    # Verify script exists
+    # Verify scripts exist
+    if (-not (Test-Path $VbsPath)) {
+        Write-Host "Error: CNM-Tray.vbs not found at: $VbsPath" -ForegroundColor Red
+        return
+    }
     if (-not (Test-Path $ScriptPath)) {
         Write-Host "Error: CNM-Tray.ps1 not found at: $ScriptPath" -ForegroundColor Red
         return
@@ -39,13 +44,14 @@ function Install-CNMTask {
     Write-Host "  ============================" -ForegroundColor Cyan
     Write-Host ""
 
-    # Create the action - run PowerShell hidden
+    # Create the action - use VBS launcher for truly hidden startup (no window flash)
     $action = New-ScheduledTaskAction `
-        -Execute "powershell.exe" `
-        -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
+        -Execute "wscript.exe" `
+        -Argument "`"$VbsPath`"" `
+        -WorkingDirectory $PSScriptRoot
 
-    # Trigger at user logon
-    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    # Trigger at system startup (runs before login, as current user)
+    $trigger = New-ScheduledTaskTrigger -AtStartup
 
     # Settings - allow running on battery, don't stop if on battery
     $settings = New-ScheduledTaskSettingsSet `
@@ -53,6 +59,12 @@ function Install-CNMTask {
         -DontStopIfGoingOnBatteries `
         -StartWhenAvailable `
         -ExecutionTimeLimit (New-TimeSpan -Hours 0)  # No time limit
+
+    # Principal - run as current user (required for AtStartup)
+    $principal = New-ScheduledTaskPrincipal `
+        -UserId $env:USERNAME `
+        -LogonType S4U `
+        -RunLevel Limited
 
     # Register the task
     try {
@@ -62,12 +74,12 @@ function Install-CNMTask {
             -Action $action `
             -Trigger $trigger `
             -Settings $settings `
-            -RunLevel Limited | Out-Null
+            -Principal $principal | Out-Null
 
         Write-Host "  [OK] Task '$TaskName' installed successfully!" -ForegroundColor Green
         Write-Host ""
-        Write-Host "  The CNM server will start automatically at login" -ForegroundColor White
-        Write-Host "  and show a ruby/sapphire icon in the system tray." -ForegroundColor White
+        Write-Host "  The CNM server will start automatically at BOOT" -ForegroundColor White
+        Write-Host "  (before login) and keep the system awake." -ForegroundColor White
         Write-Host ""
         Write-Host "  To start now: Right-click task in Task Scheduler > Run" -ForegroundColor Gray
         Write-Host "  Or run: .\CNM-Tray.ps1" -ForegroundColor Gray

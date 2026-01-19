@@ -66,6 +66,7 @@
 
   // Sessions state: Map of sessionId -> { term, fitAddon, status, lastActivity, preview, connected }
   const sessions = new Map();
+  const MAX_CACHED_SESSIONS = 20; // Prevent unbounded growth of sessions Map
   let focusedSessionId = null;
   let lastFocusedSessionId = null; // Track which session the terminal was last showing (to avoid jitter on re-entry)
   let focusTerm = null;
@@ -84,6 +85,11 @@
   let uploadInProgress = false;
   let uploadStatusTimeout = null;
   let pendingUploadSessionId = null; // Session ID for pending file upload
+
+  // iOS viewport tracking (for keyboard handling)
+  let visualViewportHandler = null;
+  let sessionRefreshInterval = null;
+  let visibilityChangeHandler = null;
 
   // Create session state
   let createSessionPending = false;
@@ -184,6 +190,22 @@
     return { term, fitAddon };
   }
 
+  // Cleanup old sessions from the Map to prevent memory leaks
+  function cleanupOldSessions() {
+    if (sessions.size <= MAX_CACHED_SESSIONS) return;
+
+    // Sort by lastActivity, remove oldest entries that aren't active
+    const entries = Array.from(sessions.entries())
+      .filter(([id]) => id !== focusedSessionId && !splitPanels.has(id))
+      .sort((a, b) => (a[1].lastActivity || 0) - (b[1].lastActivity || 0));
+
+    // Remove oldest entries until we're under the limit
+    const toRemove = sessions.size - MAX_CACHED_SESSIONS;
+    for (let i = 0; i < toRemove && i < entries.length; i++) {
+      sessions.delete(entries[i][0]);
+    }
+  }
+
   // Switch view
   function switchView(viewName) {
     currentView = viewName;
@@ -193,9 +215,11 @@
     splitView.classList.toggle('active', viewName === 'split');
     focusView.classList.toggle('active', viewName === 'focus');
 
-    // If going to dashboard, disconnect focus terminal
+    // If going to dashboard, disconnect focus terminal and clean up
     if (viewName === 'dashboard') {
       focusedSessionId = null;
+      // Clean up old cached sessions to prevent memory leak
+      cleanupOldSessions();
     }
 
     // Fit terminals when switching views
@@ -440,6 +464,9 @@
     }));
   }
 
+  // Terminal click handler stored for cleanup
+  let focusTermClickHandler = null;
+
   // Open focus view for a session
   function openFocusView(sessionId) {
     const isReturningToSameSession = (sessionId === lastFocusedSessionId && focusTerm);
@@ -462,10 +489,11 @@
         }
       });
 
-      // Click to focus keyboard
-      term.element.addEventListener('click', () => {
+      // Click to focus keyboard - store handler for cleanup
+      focusTermClickHandler = () => {
         showKeyboard();
-      });
+      };
+      term.element.addEventListener('click', focusTermClickHandler);
     } else if (!isReturningToSameSession) {
       // Dispose old data handler before clearing
       if (focusTermDataDisposable) {
@@ -891,6 +919,12 @@
         pingInterval = null;
       }
 
+      // Clear pending connection state
+      sessionConnectionPending = false;
+
+      // Clear all loading scrollback tracking (prevents memory leak)
+      loadingScrollback.clear();
+
       if (event.code === 4001) {
         setConnectionStatus('error', 'Auth failed');
       } else {
@@ -903,6 +937,7 @@
       // Mark sessions as disconnected
       for (const [, session] of sessions) {
         session.connected = false;
+        session.status = 'disconnected';
       }
 
       if (focusedSessionId) {
@@ -1001,6 +1036,11 @@
             session.status = 'connected';
           }
         } else if (msg.state === 'disconnected') {
+          // Clear pending state on disconnect too
+          if (statusSessionId === focusedSessionId) {
+            sessionConnectionPending = false;
+          }
+
           // Clear any pending scrollback loading for this session (prevents permanent throttle)
           loadingScrollback.delete(statusSessionId);
 
@@ -1011,6 +1051,13 @@
           if (disconnectedSession) {
             disconnectedSession.connected = false;
             disconnectedSession.status = 'disconnected';
+          }
+        } else if (msg.state === 'error') {
+          // Handle connection errors
+          sessionConnectionPending = false;
+          loadingScrollback.delete(statusSessionId);
+          if (statusSessionId === focusedSessionId) {
+            updateFocusStatus('disconnected');
           }
         }
         break;
@@ -1404,6 +1451,9 @@
   }
 
   // Ambient music controls
+  // Music visibility handler stored for potential cleanup
+  let musicVisibilityHandler = null;
+
   function initMusic() {
     if (!ambientAudio || !musicBtn) return;
 
@@ -1414,7 +1464,12 @@
     updateMusicButton();
 
     // Handle tab visibility changes - pause when hidden, resume when visible
-    document.addEventListener('visibilitychange', () => {
+    // Store reference to prevent duplicate listeners
+    if (musicVisibilityHandler) {
+      document.removeEventListener('visibilitychange', musicVisibilityHandler);
+    }
+
+    musicVisibilityHandler = () => {
       if (document.hidden) {
         // Tab is hidden - pause music if playing
         if (musicPlaying) {
@@ -1432,7 +1487,8 @@
           console.log('[Music] Resumed (tab visible)');
         }
       }
-    });
+    };
+    document.addEventListener('visibilitychange', musicVisibilityHandler);
 
     // Only auto-play if tab is visible
     if (musicEnabled && !document.hidden) {
@@ -1514,6 +1570,9 @@
     // Clear any previous value to ensure clean state
     hiddenInput.value = '';
 
+    // Re-enable pointer events before focusing
+    hiddenInput.style.pointerEvents = 'auto';
+
     // Use setTimeout to ensure focus happens after current event loop
     // This helps iOS Safari properly show the keyboard
     setTimeout(() => {
@@ -1524,6 +1583,9 @@
       if (focusTerm) {
         focusTerm.scrollToBottom();
       }
+
+      // Setup visualViewport listener for iOS keyboard resize
+      setupVisualViewportHandler();
     }, 10);
   }
 
@@ -1531,6 +1593,67 @@
   function hideKeyboard() {
     hiddenInput.blur();
     document.body.classList.remove('keyboard-visible');
+
+    // Reset viewport height CSS variable
+    document.documentElement.style.removeProperty('--viewport-height');
+
+    // Refit terminal after keyboard closes
+    if (focusTerm && focusFitAddon) {
+      setTimeout(() => {
+        focusFitAddon.fit();
+        sendResize();
+      }, 100);
+    }
+  }
+
+  // Setup visualViewport handler for iOS keyboard detection
+  function setupVisualViewportHandler() {
+    // Only setup if visualViewport API is available (iOS Safari, modern browsers)
+    if (!window.visualViewport) return;
+
+    // Remove any existing handler to prevent memory leak
+    if (visualViewportHandler) {
+      window.visualViewport.removeEventListener('resize', visualViewportHandler);
+    }
+
+    visualViewportHandler = () => {
+      const viewport = window.visualViewport;
+      const fullHeight = window.innerHeight;
+      const viewportHeight = viewport.height;
+
+      // Set CSS variable for viewport height
+      document.documentElement.style.setProperty('--viewport-height', `${viewportHeight}px`);
+
+      // If keyboard is open (viewport is smaller than window), refit terminal
+      if (viewportHeight < fullHeight * 0.8) {
+        // Keyboard is likely open
+        if (focusTerm && focusFitAddon && currentView === 'focus') {
+          // Debounce the fit call to avoid excessive resizing
+          clearTimeout(setupVisualViewportHandler._fitTimeout);
+          setupVisualViewportHandler._fitTimeout = setTimeout(() => {
+            focusFitAddon.fit();
+            sendResize();
+            // Scroll terminal to bottom to show latest output
+            focusTerm.scrollToBottom();
+          }, 50);
+        }
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', visualViewportHandler);
+    // Trigger initial resize
+    visualViewportHandler();
+  }
+
+  // Cleanup visualViewport handler
+  function cleanupVisualViewportHandler() {
+    if (visualViewportHandler && window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', visualViewportHandler);
+      visualViewportHandler = null;
+    }
+    if (setupVisualViewportHandler._fitTimeout) {
+      clearTimeout(setupVisualViewportHandler._fitTimeout);
+    }
   }
 
   // Toggle fullscreen
@@ -1547,6 +1670,7 @@
   // Setup mobile input
   function setupMobileInput() {
     let composing = false;
+    let lastInputTime = 0;
 
     hiddenInput.addEventListener('compositionstart', () => {
       composing = true;
@@ -1567,6 +1691,7 @@
       if (value && focusedSessionId) {
         sendInput(value);
         hiddenInput.value = '';
+        lastInputTime = Date.now();
       }
     });
 
@@ -1577,18 +1702,21 @@
         e.preventDefault();
         sendInput('\r');
         hiddenInput.value = '';
+        lastInputTime = Date.now();
         return;
       }
 
       if (e.key === 'Backspace') {
         e.preventDefault();
         sendInput('\x7f');
+        lastInputTime = Date.now();
         return;
       }
 
       if (e.key === 'Tab') {
         e.preventDefault();
         sendInput('\t');
+        lastInputTime = Date.now();
         return;
       }
 
@@ -1601,12 +1729,37 @@
       if (arrowKeys[e.key]) {
         e.preventDefault();
         sendInput(arrowKeys[e.key]);
+        lastInputTime = Date.now();
         return;
       }
     });
 
+    // Handle blur more carefully - iOS Safari can fire blur unexpectedly
     hiddenInput.addEventListener('blur', () => {
+      // Don't immediately remove keyboard-visible class if we just typed
+      // This prevents iOS Safari from flickering the keyboard
+      const timeSinceInput = Date.now() - lastInputTime;
+      if (timeSinceInput < 100) {
+        // Re-focus if blur happened right after input (likely iOS glitch)
+        setTimeout(() => {
+          if (document.body.classList.contains('keyboard-visible') && currentView === 'focus') {
+            hiddenInput.focus();
+          }
+        }, 10);
+        return;
+      }
+
       document.body.classList.remove('keyboard-visible');
+      // Cleanup visualViewport handler when keyboard closes
+      cleanupVisualViewportHandler();
+    });
+
+    // Handle focus to re-setup viewport handler
+    hiddenInput.addEventListener('focus', () => {
+      if (currentView === 'focus') {
+        document.body.classList.add('keyboard-visible');
+        setupVisualViewportHandler();
+      }
     });
   }
 
@@ -1871,19 +2024,102 @@
     // Connect immediately - iOS self-signed cert stability handled by session cookie
     connect();
 
-    // Periodic refresh of sessions
-    setInterval(() => {
+    // Periodic refresh of sessions - store reference for cleanup
+    sessionRefreshInterval = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         requestSessions();
       }
     }, 10000);
 
-    // Periodic dashboard update for activity indicators (disabled - causes jitter)
-    // setInterval(() => {
-    //   if (currentView === 'dashboard') {
-    //     renderDashboard();
-    //   }
-    // }, 2000);
+    // Setup page unload cleanup to prevent memory leaks
+    window.addEventListener('beforeunload', cleanup);
+
+    // Setup visibility change handler with stored reference for cleanup
+    visibilityChangeHandler = () => {
+      if (document.hidden) {
+        // Tab hidden - cleanup viewport handler
+        cleanupVisualViewportHandler();
+      } else {
+        // Tab visible - reconnect if needed
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          connect();
+        }
+        // Re-setup viewport handler if keyboard was visible
+        if (document.body.classList.contains('keyboard-visible')) {
+          setupVisualViewportHandler();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', visibilityChangeHandler);
+  }
+
+  // Cleanup function for page unload
+  function cleanup() {
+    // Clear intervals
+    if (sessionRefreshInterval) {
+      clearInterval(sessionRefreshInterval);
+      sessionRefreshInterval = null;
+    }
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      pingInterval = null;
+    }
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+    if (uploadStatusTimeout) {
+      clearTimeout(uploadStatusTimeout);
+      uploadStatusTimeout = null;
+    }
+
+    // Cleanup viewport handler
+    cleanupVisualViewportHandler();
+
+    // Remove visibility change listeners
+    if (visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', visibilityChangeHandler);
+      visibilityChangeHandler = null;
+    }
+    if (musicVisibilityHandler) {
+      document.removeEventListener('visibilitychange', musicVisibilityHandler);
+      musicVisibilityHandler = null;
+    }
+
+    // Close WebSocket
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+
+    // Dispose terminal
+    if (focusTerm) {
+      if (focusTermDataDisposable) {
+        focusTermDataDisposable.dispose();
+        focusTermDataDisposable = null;
+      }
+      // Remove click handler before disposing
+      if (focusTermClickHandler && focusTerm.element) {
+        focusTerm.element.removeEventListener('click', focusTermClickHandler);
+        focusTermClickHandler = null;
+      }
+      focusTerm.dispose();
+      focusTerm = null;
+      focusFitAddon = null;
+    }
+
+    // Dispose split panel terminals
+    for (const [sessionId, panel] of splitPanels) {
+      if (panel.activityTimeout) {
+        clearTimeout(panel.activityTimeout);
+      }
+      panel.term.dispose();
+    }
+    splitPanels.clear();
+
+    // Clear sessions
+    sessions.clear();
+    loadingScrollback.clear();
   }
 
   // Start when DOM is ready
