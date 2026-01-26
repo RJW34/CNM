@@ -127,9 +127,14 @@ export class MachineRegistry {
   updateProjects(machineId, projects) {
     const machine = this.machines.get(machineId);
     if (machine) {
+      const oldCount = machine.projects?.length || 0;
+      const newCount = projects?.length || 0;
       machine.projects = projects || [];
       machine.lastSeen = Date.now();
-      console.log(`[Registry] ${machineId} updated: ${projects.length} projects`);
+      // Only log when count changes
+      if (oldCount !== newCount) {
+        console.log(`[Registry] ${machineId} projects: ${oldCount} -> ${newCount}`);
+      }
     }
   }
 
@@ -141,9 +146,14 @@ export class MachineRegistry {
   updateSessions(machineId, sessions) {
     const machine = this.machines.get(machineId);
     if (machine) {
+      const oldCount = machine.sessions?.length || 0;
+      const newCount = sessions?.length || 0;
       machine.sessions = sessions || [];
       machine.lastSeen = Date.now();
-      console.log(`[Registry] ${machineId} updated: ${sessions.length} sessions`);
+      // Only log when count changes
+      if (oldCount !== newCount) {
+        console.log(`[Registry] ${machineId} sessions: ${oldCount} -> ${newCount}`);
+      }
     }
   }
 
